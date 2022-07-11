@@ -1,21 +1,25 @@
 import blenderproc as bproc
-import argparse
 import os 
+import argparse
 from pathlib import Path
 import yaml
-
+from os import listdir
+from os.path import isfile
 import math
 import numpy as np
 from dotmap import DotMap
-from pipelime.sequences.writers.filesystem import UnderfolderWriter
-from pipelime.sequences.samples import PlainSample, SamplesSequence
 from transforms3d import affines, euler
 import bpy
+import h5py
+from rich.progress import track
+from pipelime.sequences import SamplesSequence, Sample
+import pipelime.items as plitems
 
-DATASET_PATH = Path(__file__).parents[2]/'dataset'
-SCENE_PATH = Path(__file__).parent/'scenes'
-RENDER_PATH = Path(__file__).parent/'render'
-CONFIG_FOLDER = Path(__file__).parent/'config'
+BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
+DATASET_PATH = BASE_PATH/'data'/'dataset'
+SCENE_PATH =  BASE_PATH/'data'/'scenes'
+RENDER_PATH = BASE_PATH/'data'/'render'
+CONFIG_FOLDER = BASE_PATH/'data'/'dataset'/'config'
 
 
 IMAGE_KEY = 'image'
@@ -25,14 +29,20 @@ POSE_KEY = 'pose'
 CAMER_KEY = 'camera'
 BBOX_KEY = 'bbox'
 
-EXTENSIONS = {
-        IMAGE_KEY: "png",
-        DEPTH_KEY: "npy",
-        LIGHT_KEY: "txt",
-        CAMER_KEY: "yml",
-        POSE_KEY: "txt",
-        BBOX_KEY: "txt",
-    }
+
+# load all rendered files from a directory
+def load_rendered_files(path: str) -> list:
+  
+    for file in listdir(path):
+        file = path / file
+        file.rename(file.parent / (file.stem.zfill(5) + file.suffix))
+
+    render_files = [f for f in listdir(path) if isfile(path / f)]
+    render_files = sorted(render_files)
+
+    return render_files
+
+
 
 # get thte bbox of the scene enclosed in a delimiter object
 def get_scene_bbox(delimiter_obj: str) -> np.array:
@@ -168,7 +178,7 @@ def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_vec: np.array,
 
 
 
-def main(config_file : str, input_scene :str, output_folder : str) :
+def main(config_file : str) :
 
     cfg_file = os.path.join(CONFIG_FOLDER,config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
@@ -177,14 +187,10 @@ def main(config_file : str, input_scene :str, output_folder : str) :
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
 
-    in_path = os.path.join(SCENE_PATH, input_scene+'.blend')
-    out_path = os.path.join(DATASET_PATH, output_folder)
+    in_path = SCENE_PATH / cfg.input_scene+'.blend'
+    out_underfolder_path = DATASET_PATH / cfg.output_folder
+    out_render_path = RENDER_PATH / cfg.output_folder
 
-    writer = UnderfolderWriter(
-        folder = out_path,
-        root_files_keys=[CAMER_KEY, BBOX_KEY],
-        extensions_map=EXTENSIONS,
-    )
 
     bproc.init()
     # Transparent Background
@@ -201,7 +207,7 @@ def main(config_file : str, input_scene :str, output_folder : str) :
         "intrinsics": {
             "camera_matrix": bproc.camera.get_intrinsics_as_K_matrix().tolist(),
             "dist_coeffs": np.zeros((5, 1)).tolist(),
-            "image_size": [cfg.image.width, cfg.height],
+            "image_size": [cfg.image.width, cfg.image.height],
         },
     }
 
@@ -218,9 +224,9 @@ def main(config_file : str, input_scene :str, output_folder : str) :
     light = bproc.types.Light(type='POINT', name = 'light')
     light.set_energy(1000)
 
-    for i in range(cfg.number_images):
-        bproc.camera.add_camera_pose(camera_poses[i])
+    for i in range(cfg.num_images):
         frame = bpy.context.scene.frame_end
+        bproc.camera.add_camera_pose(camera_poses[i])
         t, r, _, _ = affines.decompose(light_poses[i])
         r_euler = euler.mat2euler(r)
         light.set_location(t,frame)
@@ -228,21 +234,47 @@ def main(config_file : str, input_scene :str, output_folder : str) :
     
     data = bproc.renderer.render()
         
-    bproc.writer.write_hdf5(RENDER_PATH, data)
+    bproc.writer.write_hdf5(out_render_path, data)
 
+    render_files = load_rendered_files(out_render_path)
+
+    seq = []
+    for idx, file_h5py in enumerate(render_files):
+        file_h5py = h5py.File(out_render_path / file_h5py, mode="r")
+        rgb = file_h5py["colors"][:]
+        depth = file_h5py["depth"][:]
+        pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+            camera_poses[idx], ["X", "-Y", "-Z"]
+        )
+        light_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+            light_poses[idx], ["X", "-Y", "-Z"]
+        )
+
+        seq.append(
+            Sample(
+                {
+                    IMAGE_KEY: plitems.PngImageItem(rgb),
+                    DEPTH_KEY: plitems.NpyNumpyItem(depth),
+                    POSE_KEY: plitems.TxtNumpyItem(pose),
+                    LIGHT_KEY: plitems.TxtNumpyItem(light_pose),
+                    CAMER_KEY: plitems.YamlMetadataItem(camera_metadata, shared=True),
+                    BBOX_KEY: plitems.TxtNumpyItem(bbox, shared=True),
+                }
+            )
+        )
+
+    SamplesSequence.from_list(seq).to_underfolder(out_underfolder_path, exists_ok=True).run(track_fn=track)
 
 
 if __name__ == '__main__':
 
-    print(str(Path(__file__).parent/'scenes'))
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
-    parser.add_argument('--in', dest='input_scene', type=str, help='input scene', required=True)
-    parser.add_argument('--out', dest='output_folder', type=str, help='output folder', required=True)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     
+    # args = parser.parse_args()
     
-    args = parser.parse_args()
-    
-    main(args.config_file, args.input_scene, args.output_folder)
+    # main(args.config_file)
+
+    main('light360')
   

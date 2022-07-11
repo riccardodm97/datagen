@@ -1,25 +1,23 @@
 import blenderproc as bproc
-import bpy
 import numpy as np
 from pathlib import Path
+import bpy
 from os import listdir
 from os.path import isfile
 import h5py
 import math
 import click
+from pipelime.sequences.writers.filesystem import UnderfolderWriter
+from pipelime.sequences.samples import PlainSample, SamplesSequence
 from transforms3d import affines, euler
-from rich.progress import track
-from pipelime.sequences import SamplesSequence, Sample
-import pipelime.items as plitems
 
 
 def get_render_files(path: str) -> list:
-    """
-    Get all files in a directory
+    """_summary_
 
-    :param path: path to directory
+    :param path: _description_
     :type path: str
-    :return: list of files
+    :return: _description_
     :rtype: list
     """
     for file in listdir(path):
@@ -32,12 +30,11 @@ def get_render_files(path: str) -> list:
 
 
 def get_bbox(obj_bbox: str) -> np.array:
-    """
-    Get bounding box of an object
+    """_summary_
 
-    :param obj_bbox: bounding box of an object
+    :param obj_bbox: _description_
     :type obj_bbox: str
-    :return: bounding box of an object
+    :return: _description_
     :rtype: np.array
     """
     scanbox_dimensions = bpy.data.objects[obj_bbox].dimensions
@@ -55,24 +52,22 @@ def get_bbox(obj_bbox: str) -> np.array:
 
 
 def convert_to_rgb(file_h5py: dict) -> np.array:
-    """
-    Convert depth to rgb
+    """_summary_
 
-    :param file_h5py: depth file
+    :param file_h5py: _description_
     :type file_h5py: dict
-    :return: rgb file
+    :return: _description_
     :rtype: np.array
     """
     return file_h5py["colors"][:]
 
 
 def convert_to_depth(file_h5py: dict) -> np.array:
-    """
-    Convert rgb to depth
+    """_summary_
 
-    :param file_h5py: rgb file
+    :param file_h5py: _description_
     :type file_h5py: dict
-    :return: depth file
+    :return: _description_
     :rtype: np.array
     """
     return file_h5py["depth"][:]
@@ -81,18 +76,17 @@ def convert_to_depth(file_h5py: dict) -> np.array:
 def generate_dome_camera_rotate(
     objs: list, t_matrix: np.array, r: float, N: int
 ) -> tuple:
-    """
-    Generate camera poses for a dome camera
+    """_summary_
 
-    :param objs: list of objects
+    :param objs: _description_
     :type objs: list
-    :param t_matrix: transformation matrix
+    :param t_matrix: _description_
     :type t_matrix: np.array
-    :param r: radius of the dome
+    :param r: _description_
     :type r: float
-    :param N: number of camera poses
+    :param N: _description_
     :type N: int
-    :return: list of camera poses
+    :return: _description_
     :rtype: tuple
     """
     poi = bproc.object.compute_poi(objs)
@@ -129,20 +123,19 @@ def generate_dome_camera_rotate(
 def generate_single_zenith(
     objs: list, t_matrix: np.array, z: int, r: float, N: int
 ) -> tuple:
-    """
-    Generate camera poses for a single zenith camera
+    """_summary_
 
-    :param objs: list of objects
+    :param objs: _description_
     :type objs: list
-    :param t_matrix: transformation matrix
+    :param t_matrix: _description_
     :type t_matrix: np.array
-    :param z: zenith angle
+    :param z: _description_
     :type z: int
-    :param r: radius of the dome
+    :param r: _description_
     :type r: float
-    :param N: number of camera poses
+    :param N: _description_
     :type N: int
-    :return: list of camera poses
+    :return: _description_
     :rtype: tuple
     """
     poi = bproc.object.compute_poi(objs)
@@ -179,23 +172,22 @@ def generate_single_zenith(
 
 
 def generate_test(objs: list, t_matrix: np.array, r: float, N: int) -> tuple:
-    """
-    Generate camera poses for a test camera
+    """_summary_
 
-    :param objs: list of objects
+    :param objs: _description_
     :type objs: list
-    :param t_matrix: transformation matrix
+    :param t_matrix: _description_
     :type t_matrix: np.array
-    :param r: radius of the dome
+    :param r: _description_
     :type r: float
-    :param N: number of camera poses
+    :param N: _description_
     :type N: int
-    :return: list of camera poses
+    :return: _description_
     :rtype: tuple
     """
     poi = bproc.object.compute_poi(objs)
 
-    def points_circle(r, n=100, z=1):
+    def points_on_circle(r, n=100, z=1):
         return [
             [math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r, z]
             for x in range(0, n + 1)
@@ -234,7 +226,22 @@ def generate_test(objs: list, t_matrix: np.array, r: float, N: int) -> tuple:
 
     return poses, poses_lights
 
+def points_circle(r, n=100, z=1):
+        return [
+            [math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r, z]
+            for x in range(0, n + 1)
+        ]
 
+def points_on_circumference(center: Tuple[float, float] = (0.0, 0.0), r: float = 50.0, n: int = 100) -> List[Tuple[float, float]]:
+    return [
+        (
+            center[0] + (math.cos(2 * math.pi / n * x) * r),  # x
+            center[1] + (math.sin(2 * math.pi / n * x) * r),  # y
+        )
+        for x in range(0, n + 1)]
+
+
+# The lights are attached to the camera and not imported from the scene
 @click.command(
     help="Generate a sequence of samples from a given scene, the light attached to the camera"
 )
@@ -295,6 +302,21 @@ def main(
     render_test,
 ):
 
+    extensions = {
+        image_key: "png",
+        depth_key: "npy",
+        light_key: "txt",
+        camera_key: "yml",
+        pose_key: "txt",
+        bbox_key: "txt",
+    }
+
+    writer = UnderfolderWriter(
+        folder=Path(output_folder) / "underfolder",
+        root_files_keys=[camera_key, bbox_key],
+        extensions_map=extensions,
+    )
+
     bproc.init()
     # Transparent Background
     bproc.renderer.set_output_format(enable_transparency=True)
@@ -318,6 +340,7 @@ def main(
 
     t_matrix = np.eye(4)
     t_matrix[0, 3] = 2
+    # t_matrix[1, 3] = radius * 2
     t_matrix[1, 3] = 0
     t_matrix[2, 3] = 0
     if render_dome:
@@ -329,8 +352,6 @@ def main(
         poses, poses_lights = generate_test(objs, t_matrix, radius, number_images)
 
     elif render_zenith:
-        # TODO: fix this bug
-        # This is buggy because the number of images for zenith is not constant
         poses = []
         poses_lights = []
         zenith_step = 90 / n_zenith
@@ -350,7 +371,7 @@ def main(
     bproc.renderer.enable_depth_output(False)
 
     light = bproc.types.Light()
-    light.set_type("POINT")
+    light.set_type("SPOT")
     light.set_energy(1000)
     for i in range(number_images):
         bproc.utility.reset_keyframes()
@@ -360,7 +381,6 @@ def main(
         light.set_location(t)
         light.set_rotation_euler(r_euler)
         data = bproc.renderer.render()
-        # Is this needed?
         data.update(
             bproc.renderer.render_segmap(
                 map_by=["cp_object", "name", "instance"],
@@ -373,34 +393,35 @@ def main(
 
     render_files = get_render_files(Path(output_folder) / "render")
 
-    seq = []
+    samples = []
     for idx, file_h5py in enumerate(render_files):
         file_h5py = h5py.File(Path(output_folder) / "render" / file_h5py, mode="r")
         rgb = convert_to_rgb(file_h5py)
         depth = convert_to_depth(file_h5py)
-        pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
-            poses[idx], ["X", "-Y", "-Z"]
-        )
-        light_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
-            poses_lights[idx], ["X", "-Y", "-Z"]
-        )
 
-        seq.append(
-            Sample(
-                {
-                    image_key: plitems.PngImageItem(rgb),
-                    depth_key: plitems.NpyNumpyItem(depth),
-                    pose_key: plitems.TxtNumpyItem(pose),
-                    light_key: plitems.TxtNumpyItem(light_pose),
-                    camera_key: plitems.YamlMetadataItem(camera_metadata, shared=True),
-                    bbox_key: plitems.TxtNumpyItem(bbox, shared=True),
-                }
-            )
-        )
+        # light_position = [
+        #     poses_lights[idx][0, 3],
+        #     poses_lights[idx][1, 3],
+        #     poses_lights[idx][2, 3],
+        # ]
 
-    SamplesSequence.from_list(seq).to_underfolder(output_folder, exists_ok=True).run(
-        track_fn=track
-    )
+        data = {
+            image_key: rgb.astype(np.uint8),
+            pose_key: bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+                poses[idx], ["X", "-Y", "-Z"]
+            ),
+            camera_key: camera_metadata,
+            bbox_key: bbox,
+            light_key: bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+                poses_lights[idx], ["X", "-Y", "-Z"]
+            ),
+            # light_key: light_position,
+            depth_key: depth,
+        }
+        sample = PlainSample(data=data, id=idx)
+        samples.append(sample)
+
+    writer(SamplesSequence(samples))
 
 
 if __name__ == "__main__":
