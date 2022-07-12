@@ -4,6 +4,7 @@ import pickle
 import argparse
 from pathlib import Path
 import yaml
+from typing import Tuple 
 
 import math
 import numpy as np
@@ -67,7 +68,7 @@ def generate_poses_on_dome_camera(objs: list, radius: float, num_poses: int, poi
 
 
 #generate random camera poses on a dome, and light poses translated by t from camera
-def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.array, radius: float, num_poses: int) -> tuple:
+def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.array, radius: float, num_poses: int) -> Tuple:
     '''
     generate random camera poses on a dome, and light poses translated by t_vec from the camera
     ''' 
@@ -104,20 +105,21 @@ def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.arr
 
 
 # generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius
-def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, radius: float, theta : int, num_poses: int) -> tuple:
+def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, radius: float, theta : int, num_poses: int) -> Tuple:
     '''
-    generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius. theta is the zenit in degree
+    generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius and fixed camera position. 
+    theta is the zenit in degree
     '''
 
     assert t_light_cfg.is_active == True, ' this method takes a translation for the light wrt to the camera'
-
-    t_vec = np.array(t_light_cfg.vector)   #fetch the tranlsation vector from the cfg file 
 
     def points_circle(r, center, num_points):
         return [
             [center[0] + math.cos(2 * math.pi / num_points * x) * r, center[1] + math.sin(2 * math.pi / num_points * x) * r, center[2]]
                 for x in range(0, num_points + 1)
             ]
+    
+    t_vec = np.array(t_light_cfg.vector)   #fetch the tranlsation vector from the cfg file 
   
     #generate translation matrix from translation vector
     t_matrix = np.eye(4)
@@ -132,13 +134,13 @@ def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, rad
 
     poi_ = poi.copy()
     poi_[2] += radius * math.cos(theta)
-    location = bproc.sampler.disk(
+    cam_location = bproc.sampler.disk(
         center=poi_,
         radius=radius * math.sin(theta),
         sample_from="circle",
     )
-    rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - location)
-    cam2world  = bproc.math.build_transformation_mat(location, rotation_matrix)
+    rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - cam_location)
+    cam2world  = bproc.math.build_transformation_mat(cam_location, rotation_matrix)
 
     # compute a light trajectory
     lights_positions = points_circle(radius, poi_, num_poses)
@@ -155,6 +157,58 @@ def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, rad
 
     return camera_poses, light_poses
 
+
+def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, radius: float, theta: int, num_poses: int) :
+    '''
+    generate poses for the camera on a circle at some height on a hemisphere around the poi with a given radius and fixed light position
+    theta is the zenit in degree
+    '''
+
+    assert t_light_cfg.is_active == True, ' this method takes a translation for the light wrt to the camera'
+
+    def points_circle(r, center, num_points):
+        return [
+            [center[0] + math.cos(2 * math.pi / num_points * x) * r, center[1] + math.sin(2 * math.pi / num_points * x) * r, center[2]]
+                for x in range(0, num_points + 1)
+            ]
+
+    t_vec = np.array(t_light_cfg.vector)   #fetch the tranlsation vector from the cfg file 
+  
+    #generate translation matrix from translation vector
+    t_matrix = np.eye(4)
+    t_matrix[:3,3] = t_vec
+
+    poi = bproc.object.compute_poi(objs)
+
+    camera_poses = []
+    light_poses = []
+
+    theta = math.radians(theta)
+
+    poi_ = poi.copy()
+    poi_[2] += radius * math.cos(theta)
+    light_location = bproc.sampler.disk(
+        center=poi_,
+        radius=radius * math.sin(theta),
+        sample_from="circle",
+    )
+    rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_location)
+    light2world = bproc.math.build_transformation_mat(light_location, rotation_matrix)
+    light2light_translated = np.matmul(light2world, t_matrix)
+    light_location = light2light_translated[:3,3]
+    light_rotation = bproc.camera.rotation_from_forward_vec(poi - light_location)
+    light_translated2world = bproc.math.build_transformation_mat(light_location, light_rotation)
+
+    # compute a light trajectory
+    camera_positions = points_circle(radius, poi_, num_poses)
+    for position in camera_positions:
+        light_poses.append(light_translated2world)
+
+        cam_rotation = bproc.camera.rotation_from_forward_vec(poi - position)
+        cam2world = bproc.math.build_transformation_mat(position, cam_rotation)
+        camera_poses.append(cam2world)
+
+    return camera_poses, light_poses
 
 
 
@@ -180,7 +234,7 @@ def main(config_file : str) :
     bproc.renderer.enable_depth_output(False)
 
     
-    camera_poses, light_poses = generate_poses_on_circle_light_and_fixed_camera(objs,cfg.translate_light,cfg.dome.radius,cfg.dome.zenit,cfg.num_images)
+    camera_poses, light_poses = generate_poses_on_circle_camera_and_fixed_light(objs,cfg.translate_light,cfg.dome.radius,cfg.dome.zenit,cfg.num_images)
 
     #light 
     light = bproc.types.Light(type='POINT', name = 'light')
@@ -242,12 +296,12 @@ def main(config_file : str) :
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
     
-    main(args.config_file)
+    # main(args.config_file)
 
-    # main('light360')
+    main('camera360')
   
