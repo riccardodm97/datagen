@@ -54,8 +54,10 @@ def main(config_file : str) :
     with open(cfg_file, "r") as f:
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
+    
+    type = 'train' if cfg.train else 'test'
 
-    out_underfolder_path = DATASET_PATH / cfg.output_folder
+    out_underfolder_path = DATASET_PATH / type / cfg.output_folder
     render_path = BLENDER_PATH / cfg.output_folder / 'render'
     c_poses_path = BLENDER_PATH / cfg.output_folder / 'c_poses.npy'
     l_poses_path = BLENDER_PATH / cfg.output_folder / 'l_poses.npy'

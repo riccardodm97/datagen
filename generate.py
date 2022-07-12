@@ -14,7 +14,6 @@ import bpy
 
 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
-DATASET_PATH = BASE_PATH/'data'/'dataset'
 SCENE_PATH =  BASE_PATH/'data'/'scenes'
 BLENDER_PATH = BASE_PATH/'data'/'blender'
 CONFIG_FOLDER = BASE_PATH/'data'/'dataset'/'config'
