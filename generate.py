@@ -1,51 +1,28 @@
 import blenderproc as bproc
 import os 
+import pickle
 import argparse
 from pathlib import Path
 import yaml
-from os import listdir
-from os.path import isfile
+
 import math
 import numpy as np
 from dotmap import DotMap
 from transforms3d import affines, euler
 import bpy
-import h5py
-from rich.progress import track
-from pipelime.sequences import SamplesSequence, Sample
-import pipelime.items as plitems
+
+
 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
 DATASET_PATH = BASE_PATH/'data'/'dataset'
 SCENE_PATH =  BASE_PATH/'data'/'scenes'
-RENDER_PATH = BASE_PATH/'data'/'render'
+BLENDER_PATH = BASE_PATH/'data'/'blender'
 CONFIG_FOLDER = BASE_PATH/'data'/'dataset'/'config'
-
-
-IMAGE_KEY = 'image'
-DEPTH_KEY = 'depth'
-LIGHT_KEY = 'light'
-POSE_KEY = 'pose'
-CAMER_KEY = 'camera'
-BBOX_KEY = 'bbox'
-
-
-# load all rendered files from a directory
-def load_rendered_files(path: str) -> list:
-  
-    for file in listdir(path):
-        file = path / file
-        file.rename(file.parent / (file.stem.zfill(5) + file.suffix))
-
-    render_files = [f for f in listdir(path) if isfile(path / f)]
-    render_files = sorted(render_files)
-
-    return render_files
 
 
 
 # get thte bbox of the scene enclosed in a delimiter object
-def get_scene_bbox(delimiter_obj: str) -> np.array:
+def get_scene_bbox(delimiter_obj: str) -> np.ndarray:
     """
     :param obj_bbox: _description_
     :type obj_bbox: str
@@ -97,7 +74,7 @@ def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.arr
     ''' 
 
     #generate translation matrix from translation vector
-    t_matrix = np.eye(4)
+    t_matrix = np.eye(4)                                        #TODO fetch the translation vector from the cfg file 
     t_matrix[:3,3] = t_vec
 
     #determine point of interest in the scene 
@@ -128,10 +105,14 @@ def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.arr
 
 
 # generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius
-def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_vec: np.array, radius: float, theta : int, num_poses: int) -> tuple:
+def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, radius: float, theta : int, num_poses: int) -> tuple:
     '''
     generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius. theta is the zenit in degree
     '''
+
+    assert t_light_cfg.is_active == True, ' this method takes a translation for the light wrt to the camera'
+
+    t_vec = np.array(t_light_cfg.vector)   #fetch the tranlsation vector from the cfg file 
 
     def points_circle(r, center, num_points):
         return [
@@ -187,39 +168,21 @@ def main(config_file : str) :
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
 
-    in_path = SCENE_PATH / cfg.input_scene+'.blend'
-    out_underfolder_path = DATASET_PATH / cfg.output_folder
-    out_render_path = RENDER_PATH / cfg.output_folder
-
+    in_path = SCENE_PATH / (cfg.input_scene + '.blend')                  # path of the blender scene to load
+    out_render_path = BLENDER_PATH / cfg.output_folder / 'render'        # path where the rendered images will be stored as h2f5 files
 
     bproc.init()
     # Transparent Background
     bproc.renderer.set_output_format(enable_transparency=True)
     # Import just the objects and not the lights
-    objs = bproc.loader.load_blend(in_path, data_blocks=["objects"], obj_types=["mesh"])
+    objs = bproc.loader.load_blend(str(in_path), data_blocks=["objects"], obj_types=["mesh"])
     bproc.camera.set_resolution(cfg.image.width, cfg.image.height)
-
-    camera_metadata = {
-        "camera_pose": {
-            "rotation": np.eye(3).tolist(),
-            "translation": [0, 0, 0],
-        },
-        "intrinsics": {
-            "camera_matrix": bproc.camera.get_intrinsics_as_K_matrix().tolist(),
-            "dist_coeffs": np.zeros((5, 1)).tolist(),
-            "image_size": [cfg.image.width, cfg.image.height],
-        },
-    }
-
-
-    bbox = get_scene_bbox(cfg.delimiter_obj)
-
-    t_vec = np.array([2,0,0])
-    camera_poses, light_poses = generate_poses_on_circle_light_and_fixed_camera(objs,t_vec,cfg.dome.radius,cfg.dome.zenit,cfg.num_images)
-
     bproc.renderer.set_noise_threshold(16)
     bproc.renderer.enable_depth_output(False)
+
     
+    camera_poses, light_poses = generate_poses_on_circle_light_and_fixed_camera(objs,cfg.translate_light,cfg.dome.radius,cfg.dome.zenit,cfg.num_images)
+
     #light 
     light = bproc.types.Light(type='POINT', name = 'light')
     light.set_energy(1000)
@@ -233,48 +196,59 @@ def main(config_file : str) :
         light.set_rotation_euler(r_euler,frame)
     
     data = bproc.renderer.render()
-        
+
+
+    #save everything to temp blender folder to be later converted into underfolder 
+
     bproc.writer.write_hdf5(out_render_path, data)
 
-    render_files = load_rendered_files(out_render_path)
+    camera_metadata = {
+        "camera_pose": {
+            "rotation": np.eye(3).tolist(),
+            "translation": [0, 0, 0],
+        },
+        "intrinsics": {
+            "camera_matrix": bproc.camera.get_intrinsics_as_K_matrix().tolist(),
+            "dist_coeffs": np.zeros((5, 1)).tolist(),
+            "image_size": [cfg.image.width, cfg.image.height],
+        },
+    }
+    metadata_path = BLENDER_PATH / cfg.output_folder / 'camera_metadata.pickle' 
+    with open(metadata_path, 'wb') as m:
+        pickle.dump(camera_metadata, m)
 
-    seq = []
-    for idx, file_h5py in enumerate(render_files):
-        file_h5py = h5py.File(out_render_path / file_h5py, mode="r")
-        rgb = file_h5py["colors"][:]
-        depth = file_h5py["depth"][:]
-        pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
-            camera_poses[idx], ["X", "-Y", "-Z"]
+    bbox = get_scene_bbox(cfg.delimiter_obj)
+    bbox_path = BLENDER_PATH / cfg.output_folder / 'bbox.npy'
+    with open(bbox_path, 'wb') as f:
+        np.save(f, bbox)
+
+    c_poses, l_poses = [], []
+    for c_pose, l_pose in zip(camera_poses,light_poses): #DEBUG
+        camera_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+            c_pose, ["X", "-Y", "-Z"]
         )
         light_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
-            light_poses[idx], ["X", "-Y", "-Z"]
+            l_pose, ["X", "-Y", "-Z"]
         )
-
-        seq.append(
-            Sample(
-                {
-                    IMAGE_KEY: plitems.PngImageItem(rgb),
-                    DEPTH_KEY: plitems.NpyNumpyItem(depth),
-                    POSE_KEY: plitems.TxtNumpyItem(pose),
-                    LIGHT_KEY: plitems.TxtNumpyItem(light_pose),
-                    CAMER_KEY: plitems.YamlMetadataItem(camera_metadata, shared=True),
-                    BBOX_KEY: plitems.TxtNumpyItem(bbox, shared=True),
-                }
-            )
-        )
-
-    SamplesSequence.from_list(seq).to_underfolder(out_underfolder_path, exists_ok=True).run(track_fn=track)
+        c_poses.append(camera_pose)
+        l_poses.append(light_pose)
+    
+    c_poses_path = BLENDER_PATH / cfg.output_folder / 'c_poses.npy'
+    l_poses_path = BLENDER_PATH / cfg.output_folder / 'l_poses.npy'
+    with open(c_poses_path,'wb') as c, open(l_poses_path,'wb') as l:
+        np.save(c, c_poses)
+        np.save(l, l_poses)
+       
 
 
 if __name__ == '__main__':
 
-
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     
-    # args = parser.parse_args()
+    args = parser.parse_args()
     
-    # main(args.config_file)
+    main(args.config_file)
 
-    main('light360')
+    # main('light360')
   

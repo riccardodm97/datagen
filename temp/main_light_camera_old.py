@@ -7,6 +7,7 @@ from os.path import isfile
 import h5py
 import math
 import click
+from typing import list, Tuple
 from pipelime.sequences.writers.filesystem import UnderfolderWriter
 from pipelime.sequences.samples import PlainSample, SamplesSequence
 from transforms3d import affines, euler
@@ -232,7 +233,7 @@ def points_circle(r, n=100, z=1):
             for x in range(0, n + 1)
         ]
 
-def points_on_circumference(center: Tuple[float, float] = (0.0, 0.0), r: float = 50.0, n: int = 100) -> List[Tuple[float, float]]:
+def points_on_circumference(center: Tuple[float, float] = (0.0, 0.0), r: float = 50.0, n: int = 100) -> list[Tuple[float, float]]:
     return [
         (
             center[0] + (math.cos(2 * math.pi / n * x) * r),  # x
