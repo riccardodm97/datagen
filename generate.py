@@ -214,33 +214,33 @@ def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, rad
 
 def main(config_file : str) :
 
-    cfg_file = os.path.join(CONFIG_FOLDER,config_file+'.yml')
+    cfg_file = os.path.join(CONFIG_FOLDER, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
 
     with open(cfg_file, "r") as f:
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
 
-    in_path = SCENE_PATH / (cfg.input_scene + '.blend')                  # path of the blender scene to load
-    out_render_path = BLENDER_PATH / cfg.output_folder / 'render'        # path where the rendered images will be stored as h2f5 files
+    in_path = SCENE_PATH / (cfg.scene.input + '.blend')                  # path of the blender scene to load
+    out_render_path = BLENDER_PATH / cfg.id / 'render'        # path where the rendered images will be stored as h2f5 files
 
     bproc.init()
     # Transparent Background
     bproc.renderer.set_output_format(enable_transparency=True)
     # Import just the objects and not the lights
     objs = bproc.loader.load_blend(str(in_path), data_blocks=["objects"], obj_types=["mesh"])
-    bproc.camera.set_resolution(cfg.image.width, cfg.image.height)
+    bproc.camera.set_resolution(cfg.images.width, cfg.images.height)
     bproc.renderer.set_noise_threshold(16)
     bproc.renderer.enable_depth_output(False)
 
-    
-    camera_poses, light_poses = generate_poses_on_circle_camera_and_fixed_light(objs,cfg.translate_light,cfg.dome.radius,cfg.dome.zenit,cfg.num_images)
+    #TODO load function from yaml
+    camera_poses, light_poses = generate_poses_on_circle_camera_and_fixed_light(objs,cfg.gen_function,cfg.images_num)
 
     #light 
-    light = bproc.types.Light(type='POINT', name = 'light')
-    light.set_energy(1000)
+    light = bproc.types.Light(type=cfg.light.type, name = 'light')
+    light.set_energy(cfg.light.energy)
 
-    for i in range(cfg.num_images):
+    for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
         bproc.camera.add_camera_pose(camera_poses[i])
         t, r, _, _ = affines.decompose(light_poses[i])
@@ -263,15 +263,15 @@ def main(config_file : str) :
         "intrinsics": {
             "camera_matrix": bproc.camera.get_intrinsics_as_K_matrix().tolist(),
             "dist_coeffs": np.zeros((5, 1)).tolist(),
-            "image_size": [cfg.image.width, cfg.image.height],
+            "image_size": [cfg.images.width, cfg.images.height],
         },
     }
-    metadata_path = BLENDER_PATH / cfg.output_folder / 'camera_metadata.pickle' 
+    metadata_path = BLENDER_PATH / cfg.id / 'camera_metadata.pickle' 
     with open(metadata_path, 'wb') as m:
         pickle.dump(camera_metadata, m)
 
     bbox = get_scene_bbox(cfg.delimiter_obj)
-    bbox_path = BLENDER_PATH / cfg.output_folder / 'bbox.npy'
+    bbox_path = BLENDER_PATH / cfg.id / 'bbox.npy'
     with open(bbox_path, 'wb') as f:
         np.save(f, bbox)
 
@@ -286,8 +286,8 @@ def main(config_file : str) :
         c_poses.append(camera_pose)
         l_poses.append(light_pose)
     
-    c_poses_path = BLENDER_PATH / cfg.output_folder / 'c_poses.npy'
-    l_poses_path = BLENDER_PATH / cfg.output_folder / 'l_poses.npy'
+    c_poses_path = BLENDER_PATH / cfg.id / 'c_poses.npy'
+    l_poses_path = BLENDER_PATH / cfg.id / 'l_poses.npy'
     with open(c_poses_path,'wb') as c, open(l_poses_path,'wb') as l:
         np.save(c, c_poses)
         np.save(l, l_poses)
@@ -296,12 +296,12 @@ def main(config_file : str) :
 
 if __name__ == '__main__':
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     
-    # args = parser.parse_args()
+    args = parser.parse_args()
     
-    # main(args.config_file)
+    main(args.config_file)
 
-    main('camera360')
+    # main('camera360')
   

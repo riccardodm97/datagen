@@ -15,7 +15,6 @@ from pipelime.sequences.samples import PlainSample, SamplesSequence
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
 DATASET_PATH = BASE_PATH/'data'/'dataset'
 BLENDER_PATH = BASE_PATH/'data'/'blender'
-CONFIG_FOLDER = BASE_PATH/'data'/'dataset'/'config'
 
 
 IMAGE_KEY = 'image'
@@ -24,6 +23,7 @@ LIGHT_KEY = 'light'
 POSE_KEY = 'pose'
 CAMERA_KEY = 'camera'
 BBOX_KEY = 'bbox'
+METADATA_KEY = 'metadata'
 
 EXTENSIONS = {
         IMAGE_KEY: "png",
@@ -32,6 +32,7 @@ EXTENSIONS = {
         CAMERA_KEY: "yml",
         POSE_KEY: "txt",
         BBOX_KEY: "txt",
+        METADATA_KEY : "yml"   #DEBUG 
     }
 
 # load all rendered files from a directory
@@ -48,7 +49,7 @@ def load_rendered_files(path: str) -> list:
 
 def main(config_file : str) :
 
-    cfg_file = os.path.join(CONFIG_FOLDER,config_file+'.yml')
+    cfg_file = os.path.join(DATASET_PATH,config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
 
     with open(cfg_file, "r") as f:
@@ -57,16 +58,17 @@ def main(config_file : str) :
     
     type = 'train' if cfg.train else 'test'
 
-    out_underfolder_path = DATASET_PATH / type / cfg.output_folder
-    render_path = BLENDER_PATH / cfg.output_folder / 'render'
-    c_poses_path = BLENDER_PATH / cfg.output_folder / 'c_poses.npy'
-    l_poses_path = BLENDER_PATH / cfg.output_folder / 'l_poses.npy'
-    bbox_path = BLENDER_PATH / cfg.output_folder / 'bbox.npy'
-    metadata_path =BLENDER_PATH / cfg.output_folder / 'camera_metadata.pickle'
+    out_underfolder_path = DATASET_PATH / type / cfg.id
+    render_path = BLENDER_PATH / cfg.id / 'render'
+    c_poses_path = BLENDER_PATH / cfg.id / 'c_poses.npy'
+    l_poses_path = BLENDER_PATH / cfg.id / 'l_poses.npy'
+    bbox_path = BLENDER_PATH / cfg.id / 'bbox.npy'
+    camera_metadata_path = BLENDER_PATH / cfg.id / 'camera_metadata.pickle'
+
 
     writer = UnderfolderWriter(
         folder= out_underfolder_path,
-        root_files_keys=[CAMERA_KEY, BBOX_KEY],
+        root_files_keys=[CAMERA_KEY, BBOX_KEY, METADATA_KEY],
         extensions_map=EXTENSIONS,
     )
 
@@ -75,7 +77,7 @@ def main(config_file : str) :
     light_poses = np.load(l_poses_path)
     bbox = np.load(bbox_path)
 
-    with open(metadata_path, 'rb') as m:
+    with open(camera_metadata_path, 'rb') as m:
         camera_metadata = pickle.load(m)
         
     render_files = load_rendered_files(render_path)
@@ -92,7 +94,8 @@ def main(config_file : str) :
             CAMERA_KEY: camera_metadata,
             BBOX_KEY: bbox,
             POSE_KEY: camera_poses[idx], 
-            LIGHT_KEY: light_poses[idx]
+            LIGHT_KEY: light_poses[idx],
+            METADATA_KEY: cfg_dict
         }
         sample = PlainSample(data=data, id=idx)
         samples.append(sample)
