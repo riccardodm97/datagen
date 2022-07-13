@@ -17,7 +17,7 @@ import bpy
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
 SCENE_PATH =  BASE_PATH/'data'/'scenes'
 BLENDER_PATH = BASE_PATH/'data'/'blender'
-CONFIG_FOLDER = BASE_PATH/'data'/'dataset'/'config'
+DATASET_FOLDER = BASE_PATH/'data'/'dataset'
 
 
 
@@ -68,13 +68,15 @@ def generate_poses_on_dome_camera(objs: list, radius: float, num_poses: int, poi
 
 
 #generate random camera poses on a dome, and light poses translated by t from camera
-def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.array, radius: float, num_poses: int) -> Tuple:
+def generate_poses_on_dome_camera_and_translated_light(objs: list, num_poses : int, t_vector : list, dome_radius: float) -> Tuple:
     '''
     generate random camera poses on a dome, and light poses translated by t_vec from the camera
-    ''' 
+    '''
+
+    t_vec = np.array(t_vector)   #convert the t_vector in numpy array  
 
     #generate translation matrix from translation vector
-    t_matrix = np.eye(4)                                        #TODO fetch the translation vector from the cfg file 
+    t_matrix = np.eye(4)                                        
     t_matrix[:3,3] = t_vec
 
     #determine point of interest in the scene 
@@ -86,7 +88,7 @@ def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.arr
     for _ in range(num_poses):
         cam_location = bproc.sampler.part_sphere(
             center=poi,
-            radius=radius,
+            radius=dome_radius,
             part_sphere_dir_vector=[0, 0, 1],
             mode="SURFACE",
             dist_above_center=0.0,
@@ -105,13 +107,13 @@ def generate_poses_on_dome_camera_and_translated_light(objs: list, t_vec: np.arr
 
 
 # generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius
-def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, radius: float, theta : int, num_poses: int) -> Tuple:
+def generate_poses_on_circle_light_and_fixed_camera(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple:
     '''
     generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius and fixed camera position. 
     theta is the zenit in degree
     '''
 
-    assert t_light_cfg.is_active == True, ' this method takes a translation for the light wrt to the camera'
+    assert t_vector is not None, ' this method takes a translation for the light wrt to the camera'
 
     def points_circle(r, center, num_points):
         return [
@@ -119,7 +121,7 @@ def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, rad
                 for x in range(0, num_points + 1)
             ]
     
-    t_vec = np.array(t_light_cfg.vector)   #fetch the tranlsation vector from the cfg file 
+    t_vec = np.array(t_vector)   #convert the t_vector in numpy array 
   
     #generate translation matrix from translation vector
     t_matrix = np.eye(4)
@@ -130,20 +132,20 @@ def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, rad
     camera_poses = []
     light_poses = []
 
-    theta = math.radians(theta)
+    theta = math.radians(dome_zenit)
 
     poi_ = poi.copy()
-    poi_[2] += radius * math.cos(theta)
+    poi_[2] += dome_radius * math.cos(theta)
     cam_location = bproc.sampler.disk(
         center=poi_,
-        radius=radius * math.sin(theta),
+        radius=dome_radius * math.sin(theta),
         sample_from="circle",
     )
     rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - cam_location)
     cam2world  = bproc.math.build_transformation_mat(cam_location, rotation_matrix)
 
     # compute a light trajectory
-    lights_positions = points_circle(radius, poi_, num_poses)
+    lights_positions = points_circle(dome_radius, poi_, num_poses)
     for position in lights_positions:
         camera_poses.append(cam2world)
 
@@ -158,13 +160,13 @@ def generate_poses_on_circle_light_and_fixed_camera(objs: list, t_light_cfg, rad
     return camera_poses, light_poses
 
 
-def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, radius: float, theta: int, num_poses: int) :
+def generate_poses_on_circle_camera_and_fixed_light(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple :
     '''
     generate poses for the camera on a circle at some height on a hemisphere around the poi with a given radius and fixed light position
-    theta is the zenit in degree
+    dome_zenit is the zenit in degree which determines the circle height on the dome hemisphere 
     '''
 
-    assert t_light_cfg.is_active == True, ' this method takes a translation for the light wrt to the camera'
+    assert t_vector is not None, ' this method takes a translation for the light wrt to the camera'
 
     def points_circle(r, center, num_points):
         return [
@@ -172,7 +174,7 @@ def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, rad
                 for x in range(0, num_points + 1)
             ]
 
-    t_vec = np.array(t_light_cfg.vector)   #fetch the tranlsation vector from the cfg file 
+    t_vec = np.array(t_vector)   #convert the t_vector in numpy array 
   
     #generate translation matrix from translation vector
     t_matrix = np.eye(4)
@@ -183,13 +185,13 @@ def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, rad
     camera_poses = []
     light_poses = []
 
-    theta = math.radians(theta)
+    theta = math.radians(dome_zenit)
 
     poi_ = poi.copy()
-    poi_[2] += radius * math.cos(theta)
+    poi_[2] += dome_radius * math.cos(theta)
     light_location = bproc.sampler.disk(
         center=poi_,
-        radius=radius * math.sin(theta),
+        radius= dome_radius * math.sin(theta),
         sample_from="circle",
     )
     rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_location)
@@ -200,7 +202,7 @@ def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, rad
     light_translated2world = bproc.math.build_transformation_mat(light_location, light_rotation)
 
     # compute a light trajectory
-    camera_positions = points_circle(radius, poi_, num_poses)
+    camera_positions = points_circle(dome_radius, poi_, num_poses)
     for position in camera_positions:
         light_poses.append(light_translated2world)
 
@@ -214,7 +216,7 @@ def generate_poses_on_circle_camera_and_fixed_light(objs: list, t_light_cfg, rad
 
 def main(config_file : str) :
 
-    cfg_file = os.path.join(CONFIG_FOLDER, config_file+'.yml')
+    cfg_file = os.path.join(DATASET_FOLDER, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
 
     with open(cfg_file, "r") as f:
@@ -233,8 +235,11 @@ def main(config_file : str) :
     bproc.renderer.set_noise_threshold(16)
     bproc.renderer.enable_depth_output(False)
 
-    #TODO load function from yaml
-    camera_poses, light_poses = generate_poses_on_circle_camera_and_fixed_light(objs,cfg.gen_function,cfg.images_num)
+    #load function from yaml
+    kwargs_func = cfg.gen_function.toDict()   
+    func_name = kwargs_func.pop('f')
+    gen_func = globals()[func_name]
+    camera_poses, light_poses = gen_func(objs,cfg.images.num,**kwargs_func)
 
     #light 
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
@@ -270,7 +275,7 @@ def main(config_file : str) :
     with open(metadata_path, 'wb') as m:
         pickle.dump(camera_metadata, m)
 
-    bbox = get_scene_bbox(cfg.delimiter_obj)
+    bbox = get_scene_bbox(cfg.scene.delimiter_obj)
     bbox_path = BLENDER_PATH / cfg.id / 'bbox.npy'
     with open(bbox_path, 'wb') as f:
         np.save(f, bbox)
@@ -303,5 +308,5 @@ if __name__ == '__main__':
     
     main(args.config_file)
 
-    # main('camera360')
+    # main('gen_config')
   
