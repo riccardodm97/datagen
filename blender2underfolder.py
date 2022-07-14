@@ -47,9 +47,9 @@ def load_rendered_files(path: str) -> list:
 
     return render_files
 
-def main(config_file : str) :
+def main(dataset_id : str) :
 
-    cfg_file = os.path.join(DATASET_PATH,config_file+'.yml')
+    cfg_file = os.path.join(BLENDER_PATH,dataset_id,'metadata.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
 
     with open(cfg_file, "r") as f:
@@ -58,8 +58,8 @@ def main(config_file : str) :
     
     type = 'train' if cfg.train else 'test'
 
-    in_blender_tmp_folder = BLENDER_PATH / cfg.id
-    out_underfolder_path = DATASET_PATH / type / cfg.id
+    in_blender_tmp_folder = BLENDER_PATH / dataset_id
+    out_underfolder_path = DATASET_PATH / type / dataset_id
     
     render_path = in_blender_tmp_folder / 'render'
     c_poses_path = in_blender_tmp_folder / 'c_poses.npy'
@@ -115,8 +115,8 @@ def main(config_file : str) :
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser.add_argument('--id', dest='dataset_id', type=str, help='id of the dataset', required=True)
     
     args = parser.parse_args()
     
-    main(args.config_file)
+    main(args.dataset_id)

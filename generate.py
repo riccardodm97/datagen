@@ -314,7 +314,7 @@ def generate_poses_on_two_domes_uniformly(objs: list, num_poses : int, delta_dom
     return camera_poses, light_poses
 
 
-def main(config_file : str) :
+def main(config_file : str, dataset_id : str) :
 
     cfg_file = os.path.join(DATASET_FOLDER, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
@@ -324,7 +324,7 @@ def main(config_file : str) :
         cfg = DotMap(cfg_dict,_dynamic=False)
     
     in_path = SCENE_PATH / (cfg.scene.input + '.blend')                  # path of the blender scene to load
-    out_render_path = BLENDER_PATH / cfg.id / 'render'        # path where the rendered images will be stored as hdf5 files
+    out_render_path = BLENDER_PATH / dataset_id / 'render'        # path where the rendered images will be stored as hdf5 files
 
     bproc.init()
     # Transparent Background
@@ -370,12 +370,12 @@ def main(config_file : str) :
             "image_size": [cfg.images.width, cfg.images.height],
         },
     }
-    metadata_path = BLENDER_PATH / cfg.id / 'camera_metadata.pickle' 
-    with open(metadata_path, 'wb') as m:
+    camera_metadata_path = BLENDER_PATH / dataset_id / 'camera_metadata.pickle' 
+    with open(camera_metadata_path, 'wb') as m:
         pickle.dump(camera_metadata, m)
 
     bbox = get_scene_bbox(cfg.scene.delimiter_obj)
-    bbox_path = BLENDER_PATH / cfg.id / 'bbox.npy'
+    bbox_path = BLENDER_PATH / dataset_id / 'bbox.npy'
     with open(bbox_path, 'wb') as f:
         np.save(f, bbox)
 
@@ -390,11 +390,15 @@ def main(config_file : str) :
         c_poses.append(camera_pose)
         l_poses.append(light_pose)
     
-    c_poses_path = BLENDER_PATH / cfg.id / 'c_poses.npy'
-    l_poses_path = BLENDER_PATH / cfg.id / 'l_poses.npy'
+    c_poses_path = BLENDER_PATH / dataset_id / 'c_poses.npy'
+    l_poses_path = BLENDER_PATH / dataset_id / 'l_poses.npy'
     with open(c_poses_path,'wb') as c, open(l_poses_path,'wb') as l:
         np.save(c, c_poses)
         np.save(l, l_poses)
+    
+    metadata_path = BLENDER_PATH / dataset_id / 'metadata.yml'
+    with open(metadata_path,'w') as config_file :
+        yaml.dump(cfg.toDict(),config_file)
        
 
 
@@ -402,10 +406,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     
     args = parser.parse_args()
     
-    main(args.config_file)
+    main(args.config_file,args.dataset_id)
 
-    # main('gen_config')
+    #main('gen_config')
   
