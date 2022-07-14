@@ -103,13 +103,11 @@ def main(config_file : str) :
 
     writer(SamplesSequence(samples))
 
-    # copy yaml cfg file to out directory 
-    shutil.copy(cfg_file, out_underfolder_path)   #DEBUG 
-
-    # move render folder from tmp blender one to dataset folder and completely delete blender tmp folder 
+    # DEBUG
     try : 
-        shutil.move(render_path, out_underfolder_path)   #DEBUG 
-        shutil.rmtree(in_blender_tmp_folder) #DEBUG 
+        shutil.copy(cfg_file, out_underfolder_path)                # copy yaml cfg file to out directory 
+        shutil.move(str(render_path), str(out_underfolder_path))   # move render folder from tmp blender one to dataset folder
+        shutil.rmtree(in_blender_tmp_folder)                       # completely delete blender tmp folder 
     except Exception as e: 
         print(str(e))
 

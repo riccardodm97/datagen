@@ -5,6 +5,8 @@ import argparse
 from pathlib import Path
 import yaml
 from typing import Tuple 
+import itertools 
+import string
 
 import math
 import numpy as np
@@ -41,6 +43,34 @@ def get_scene_bbox(delimiter_obj: str) -> np.ndarray:
         ]
     )
     return np.round(bbox, 4)
+
+
+def points_on_dome(r, num_points):
+
+    indices = np.arange(0, num_points, dtype=float) + 0.5
+
+    theta = np.arccos(1 - 2*indices/num_points)
+    phi = np.pi * (1 + 5**0.5) * indices
+
+    x = r * np.sin(theta) * np.cos(phi)
+    y = r * np.sin(theta) * np.sin(phi)
+    z = r * np.cos(theta)
+
+    xyz = np.stack((x,y,z),axis=-1) 
+    xyz = xyz[xyz[:,-1] > 0]  #take only points above poi 
+
+    return xyz
+
+def n_points_on_circle_evenly_spaced(r, center, num_points):
+    theta = np.linspace(0,2*np.pi,num_points,endpoint=False); 
+    x = r * np.cos(theta)+center[0]
+    y = r * np.sin(theta)+center[1]
+    z = np.broadcast_to(center[2],num_points)
+
+    xyz = np.stack((x,y,z),axis=-1)
+    return xyz
+
+
 
 #generate random camera poses on a dome around the scene 
 def generate_poses_on_dome(objs: list, radius: float, num_poses: int):
@@ -212,16 +242,7 @@ def generate_poses_on_circle_fixed_light(objs: list, num_poses : int, t_vector :
 
     return camera_poses, light_poses
 
-def generate_poses_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes : float, smaller_dome_radius: float):
-    '''
-    generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
-    the point of interest. 
-    delta domes is the positive difference between the bigger dome radius and the smaller one
-    '''
-    return NotImplementedError()
-
-
-def generate_poses_uniformly_on_dome(objs: list, tot_poses : int, num_pos_camera : int, num_pos_light : int, dome_radius: float, circle_zenit : int, circle_radius_delta : float):
+def generate_poses_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_pos_camera : int, num_pos_light : int, dome_radius: float, circle_zenit : int, circle_radius_delta : float):
     '''
     generate poses for the camera on a dome with a given radius while the light is at num_pos_light fixed positions on a cicle at a given zenit 
     with a radius which is bigger than the dome radius at a given zenit by a scalar addition of circle_radius_delta
@@ -229,41 +250,18 @@ def generate_poses_uniformly_on_dome(objs: list, tot_poses : int, num_pos_camera
 
     assert tot_poses == num_pos_camera * num_pos_light
 
-    def points_on_dome(r,samples):
-
-        indices = np.arange(0, samples, dtype=float) + 0.5
-
-        theta = np.arccos(1 - 2*indices/samples)
-        phi = np.pi * (1 + 5**0.5) * indices
-
-        x = r * np.sin(theta) * np.cos(phi)
-        y = r * np.sin(theta) * np.sin(phi)
-        z = r * np.cos(theta)
-
-        xyz = np.stack((x,y,z),axis=-1)
-        return xyz
-    
-    def n_points_on_circle(r, center, num_points):
-        theta = np.linspace(0,2*np.pi,num_points,endpoint=False); 
-        x = r * np.cos(theta)+center[0]
-        y = r * np.sin(theta)+center[1]
-        z = np.broadcast_to(center[2],num_points)
-
-        xyz = np.stack((x,y,z),axis=-1)
-        return xyz
-
-
     #determine point of interest in the scene
     poi = bproc.object.compute_poi(objs)
 
-    xyz_c = points_on_dome(dome_radius,num_pos_camera)
+    xyz_c = points_on_dome(dome_radius,num_pos_camera*2)  #double it because we only take the z positive (above poi )
+    np.random.shuffle(xyz_c)   #to avoid having the poses ordered from top to bottom 
     xyz_c = xyz_c + poi #DEBUG
 
     theta = np.radians(circle_zenit)
     circle_center = poi.copy()
     circle_center[2]+= dome_radius * np.cos(theta) #DEBUG = oppure += ? la dome è centrata in 0 ma poi tutti i punti vengono alzati di poi[2]
     circle_radius = dome_radius * np.sin(theta) + circle_radius_delta
-    xyz_l = n_points_on_circle(circle_radius,circle_center,num_pos_light)
+    xyz_l = n_points_on_circle_evenly_spaced(circle_radius,circle_center,num_pos_light)
 
 
     camera_poses = []
@@ -271,12 +269,47 @@ def generate_poses_uniformly_on_dome(objs: list, tot_poses : int, num_pos_camera
     for c_id in range(xyz_c.shape[0]):
         cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
         cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+
         for l_id in range(xyz_l.shape[0]):
             camera_poses.append(cam2world)
 
             light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
             light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
             light_poses.append(light2world)
+
+    return camera_poses, light_poses
+
+def generate_poses_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes : float, smaller_dome_radius: float):
+    '''
+    generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
+    the point of interest. Camera and light poses are then randomly coupled to obtain a pair camera-light 
+    Delta domes is the positive difference between the bigger dome radius and the smaller one
+    '''
+
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    xyz_c = points_on_dome(smaller_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
+    np.random.shuffle(xyz_c)
+    xyz_c = xyz_c + poi 
+
+    xyz_l = points_on_dome(smaller_dome_radius+delta_domes,num_poses*2)
+    xyz_l = xyz_l + poi  
+
+    c_idxs = np.arange(0,num_poses)
+    l_idxs = c_idxs.copy()
+    np.random.shuffle(l_idxs)
+
+    camera_poses = []
+    light_poses = []
+    for c_id,l_id in zip(c_idxs,l_idxs):
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
+        cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+        camera_poses.append(cam2world)
+
+        light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
+        light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
+        light_poses.append(light2world)
 
     return camera_poses, light_poses
 
@@ -289,9 +322,9 @@ def main(config_file : str) :
     with open(cfg_file, "r") as f:
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
-
+    
     in_path = SCENE_PATH / (cfg.scene.input + '.blend')                  # path of the blender scene to load
-    out_render_path = BLENDER_PATH / cfg.id / 'render'        # path where the rendered images will be stored as h2f5 files
+    out_render_path = BLENDER_PATH / cfg.id / 'render'        # path where the rendered images will be stored as hdf5 files
 
     bproc.init()
     # Transparent Background
@@ -321,7 +354,6 @@ def main(config_file : str) :
         light.set_rotation_euler(r_euler,frame)
     
     data = bproc.renderer.render()
-
 
     #save everything to temp blender folder to be later converted into underfolder 
 
@@ -368,12 +400,12 @@ def main(config_file : str) :
 
 if __name__ == '__main__':
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     
-    # args = parser.parse_args()
+    args = parser.parse_args()
     
-    # main(args.config_file)
+    main(args.config_file)
 
-    main('gen_config')
+    # main('gen_config')
   
