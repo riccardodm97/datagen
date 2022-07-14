@@ -8,13 +8,15 @@ from os.path import isfile
 import h5py 
 import numpy as np
 import pickle
+import shutil
+
 from pipelime.sequences.writers.filesystem import UnderfolderWriter
 from pipelime.sequences.samples import PlainSample, SamplesSequence
 
 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
 DATASET_PATH = BASE_PATH/'data'/'dataset'
-BLENDER_PATH = BASE_PATH/'data'/'blender'
+BLENDER_PATH = BASE_PATH/'data'/'blender_tmp'
 
 
 IMAGE_KEY = 'image'
@@ -23,7 +25,6 @@ LIGHT_KEY = 'light'
 POSE_KEY = 'pose'
 CAMERA_KEY = 'camera'
 BBOX_KEY = 'bbox'
-METADATA_KEY = 'metadata'
 
 EXTENSIONS = {
         IMAGE_KEY: "png",
@@ -32,7 +33,6 @@ EXTENSIONS = {
         CAMERA_KEY: "yml",
         POSE_KEY: "txt",
         BBOX_KEY: "txt",
-        METADATA_KEY : "yml"   #DEBUG 
     }
 
 # load all rendered files from a directory
@@ -58,17 +58,19 @@ def main(config_file : str) :
     
     type = 'train' if cfg.train else 'test'
 
+    in_blender_tmp_folder = BLENDER_PATH / cfg.id
     out_underfolder_path = DATASET_PATH / type / cfg.id
-    render_path = BLENDER_PATH / cfg.id / 'render'
-    c_poses_path = BLENDER_PATH / cfg.id / 'c_poses.npy'
-    l_poses_path = BLENDER_PATH / cfg.id / 'l_poses.npy'
-    bbox_path = BLENDER_PATH / cfg.id / 'bbox.npy'
-    camera_metadata_path = BLENDER_PATH / cfg.id / 'camera_metadata.pickle'
+    
+    render_path = in_blender_tmp_folder / 'render'
+    c_poses_path = in_blender_tmp_folder / 'c_poses.npy'
+    l_poses_path = in_blender_tmp_folder / 'l_poses.npy'
+    bbox_path = in_blender_tmp_folder / 'bbox.npy'
+    camera_metadata_path = in_blender_tmp_folder / 'camera_metadata.pickle'
 
 
     writer = UnderfolderWriter(
         folder= out_underfolder_path,
-        root_files_keys=[CAMERA_KEY, BBOX_KEY, METADATA_KEY],
+        root_files_keys=[CAMERA_KEY, BBOX_KEY],
         extensions_map=EXTENSIONS,
     )
 
@@ -94,13 +96,22 @@ def main(config_file : str) :
             CAMERA_KEY: camera_metadata,
             BBOX_KEY: bbox,
             POSE_KEY: camera_poses[idx], 
-            LIGHT_KEY: light_poses[idx],
-            METADATA_KEY: cfg_dict
+            LIGHT_KEY: light_poses[idx]
         }
         sample = PlainSample(data=data, id=idx)
         samples.append(sample)
 
     writer(SamplesSequence(samples))
+
+    # copy yaml cfg file to out directory 
+    shutil.copy(cfg_file, out_underfolder_path)   #DEBUG 
+
+    # move render folder from tmp blender one to dataset folder and completely delete blender tmp folder 
+    try : 
+        shutil.move(render_path, out_underfolder_path)   #DEBUG 
+        shutil.rmtree(in_blender_tmp_folder) #DEBUG 
+    except Exception as e: 
+        print(str(e))
 
 
 if __name__ == '__main__':
