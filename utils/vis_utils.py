@@ -121,11 +121,11 @@ def poses_uniformly_on_dome_and_circle_light():
     circle1_radius = radius_c * np.sin(theta) + 0.4
     xyz_l1 = n_points_on_circle(circle1_radius,circle1_center,6)
 
-    theta = np.radians(40)
-    circle2_center = poi.copy()
-    circle2_center[2]+= radius_c * np.cos(theta)                #DEBUG = oppure += ? la dome è centrata in 0 ma poi tutti i punti vengono alzati di poi[2]
-    circle2_radius = radius_c * np.sin(theta) + 0.4
-    xyz_l2 = n_points_on_circle(circle2_radius,circle2_center,6)
+    # theta = np.radians(40)
+    # circle2_center = poi.copy()
+    # circle2_center[2]+= radius_c * np.cos(theta)                #DEBUG = oppure += ? la dome è centrata in 0 ma poi tutti i punti vengono alzati di poi[2]
+    # circle2_radius = radius_c * np.sin(theta) + 0.4
+    # xyz_l2 = n_points_on_circle(circle2_radius,circle2_center,6)
 
     
 
@@ -134,7 +134,7 @@ def poses_uniformly_on_dome_and_circle_light():
 
     ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='blue')
     ax.scatter(xyz_l1[:,0],xyz_l1[:,1],xyz_l1[:,2],c='red')
-    ax.scatter(xyz_l2[:,0],xyz_l2[:,1],xyz_l2[:,2],c='green')
+    # ax.scatter(xyz_l2[:,0],xyz_l2[:,1],xyz_l2[:,2],c='green')
     ax.scatter(*poi, c='black')
 
     plt.xlabel('x')

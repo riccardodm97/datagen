@@ -5,8 +5,7 @@ import argparse
 from pathlib import Path
 import yaml
 from typing import Tuple 
-import itertools 
-import string
+import shutil
 
 import math
 import numpy as np
@@ -70,6 +69,12 @@ def n_points_on_circle_evenly_spaced(r, center, num_points):
     xyz = np.stack((x,y,z),axis=-1)
     return xyz
 
+def points_circle(r, center, num_points):
+    return [
+            [center[0] + math.cos(2 * math.pi / num_points * x) * r, center[1] + math.sin(2 * math.pi / num_points * x) * r, center[2]]
+                for x in range(0, num_points + 1)
+            ]
+
 
 
 #generate random camera poses on a dome around the scene 
@@ -98,7 +103,7 @@ def generate_poses_on_dome(objs: list, radius: float, num_poses: int):
 
 
 #generate random camera poses on a dome, and light poses translated by t from camera
-def generate_poses_on_dome_translated_light(objs: list, num_poses : int, t_vector : list, dome_radius: float) -> Tuple:
+def camera_dome_translated_light(objs: list, num_poses : int, t_vector : list, dome_radius: float) -> Tuple:
     '''
     generate random camera poses on a dome, and light poses translated by t_vec from the camera
     '''
@@ -136,20 +141,15 @@ def generate_poses_on_dome_translated_light(objs: list, num_poses : int, t_vecto
     return camera_poses, light_poses
 
 
-# generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius
-def generate_poses_on_circle_fixed_camera(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple:
+def translated_light_circle_fixed_camera(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple:
     '''
-    generate poses for the light on a circle at some height on a hemisphere around the poi with a given radius and fixed camera position. 
-    theta is the zenit in degree
+    generate poses for the light at translated positions from points on a circle at some height on a hemisphere around the poi with a given radius 
+    generated poses for the camera at a fixed position on a dome
+    theta is the zenit in degree.
+    both camera and lights are on the same height from the poi 
     '''
 
     assert t_vector is not None, ' this method takes a translation for the light wrt to the camera'
-
-    def points_circle(r, center, num_points):
-        return [
-            [center[0] + math.cos(2 * math.pi / num_points * x) * r, center[1] + math.sin(2 * math.pi / num_points * x) * r, center[2]]
-                for x in range(0, num_points + 1)
-            ]
     
     t_vec = np.array(t_vector)   #convert the t_vector in numpy array 
   
@@ -190,19 +190,15 @@ def generate_poses_on_circle_fixed_camera(objs: list, num_poses : int, t_vector 
     return camera_poses, light_poses
 
 
-def generate_poses_on_circle_fixed_light(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple :
+def camera_circle_fixed_translated_light(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple :
     '''
-    generate poses for the camera on a circle at some height on a hemisphere around the poi with a given radius and fixed light position
+    generate poses for the camera on a circle at some height on a hemisphere around the poi with a given radius 
+    generate poses for light at a fixed and translated position 
     dome_zenit is the zenit in degree which determines the circle height on the dome hemisphere 
+    both camera and lights are on the same height from the poi 
     '''
 
     assert t_vector is not None, ' this method takes a translation for the light wrt to the camera'
-
-    def points_circle(r, center, num_points):
-        return [
-            [center[0] + math.cos(2 * math.pi / num_points * x) * r, center[1] + math.sin(2 * math.pi / num_points * x) * r, center[2]]
-                for x in range(0, num_points + 1)
-            ]
 
     t_vec = np.array(t_vector)   #convert the t_vector in numpy array 
   
@@ -242,7 +238,8 @@ def generate_poses_on_circle_fixed_light(objs: list, num_poses : int, t_vector :
 
     return camera_poses, light_poses
 
-def generate_poses_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_pos_camera : int, num_pos_light : int, dome_radius: float, circle_zenit : int, circle_radius_delta : float):
+
+def camera_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_pos_camera : int, num_pos_light : int, dome_radius: float, circle_zenit : int, circle_radius_delta : float):
     '''
     generate poses for the camera on a dome with a given radius while the light is at num_pos_light fixed positions on a cicle at a given zenit 
     with a radius which is bigger than the dome radius at a given zenit by a scalar addition of circle_radius_delta
@@ -279,7 +276,8 @@ def generate_poses_uniformly_on_dome_and_circle_light(objs: list, tot_poses : in
 
     return camera_poses, light_poses
 
-def generate_poses_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes : float, smaller_dome_radius: float):
+
+def camera_light_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes : float, smaller_dome_radius: float):
     '''
     generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
     the point of interest. Camera and light poses are then randomly coupled to obtain a pair camera-light 
@@ -312,6 +310,115 @@ def generate_poses_on_two_domes_uniformly(objs: list, num_poses : int, delta_dom
         light_poses.append(light2world)
 
     return camera_poses, light_poses
+
+#TODO fix 
+# def generate_poses_same_dome(objs: list, num_poses : int, dome_radius: float):
+#     '''
+#     generate poses for the camera and the light on the same dome centered on the point of interest. 
+#     Camera and light poses are then randomly coupled to obtain a pair camera-light 
+#     '''
+
+#     #determine point of interest in the scene
+#     poi = bproc.object.compute_poi(objs)
+
+#     xyz_c = points_on_dome(dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
+#     np.random.shuffle(xyz_c)
+#     xyz_c = xyz_c + poi 
+
+#     xyz_l = points_on_dome(dome_radius,num_poses*2)
+#     np.random.shuffle(xyz_l)
+#     xyz_l = xyz_l + poi  
+
+#     camera_poses = []
+#     light_poses = []
+#     for c_id,l_id in zip(c_idxs,l_idxs):
+#         cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
+#         cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+#         camera_poses.append(cam2world)
+
+#         light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
+#         light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
+#         light_poses.append(light2world)
+
+#     return camera_poses, light_poses
+
+
+
+def fixed_camera_on_dome_light_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+    '''
+    The camera is on a fixed position on a dome of given radius while the light goes on a circle around the poi at a given height (zenit)
+    radius_delta is used to define the offset between the camera radius (dome) and the light radius (circle)
+    '''
+
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    cam_location = bproc.sampler.part_sphere(
+            center=poi,
+            radius=camera_radius,
+            part_sphere_dir_vector=[0, 0, 1],
+            mode="SURFACE",
+            dist_above_center=0.0,
+        )
+    
+    cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - cam_location)
+    cam2world  = bproc.math.build_transformation_mat(cam_location, cam_rotation_matrix)
+
+    theta = np.radians(circle_zenit)
+    circle_center = poi.copy()
+    circle_center[2]+= (camera_radius + radius_delta) * np.cos(theta) 
+    circle_radius = ((camera_radius + radius_delta) * np.sin(theta))
+    xyz_l = points_circle(circle_radius,circle_center,num_poses)
+
+    camera_poses = []
+    light_poses = []
+    for position in xyz_l:
+        camera_poses.append(cam2world)
+
+        rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - position)
+        light2world = bproc.math.build_transformation_mat(position, rotation_matrix)
+        light_poses.append(light2world)
+
+    return camera_poses, light_poses
+
+
+def fixed_light_on_dome_camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+    '''
+    The light is on a fixed position on a dome of given radius while the camera goes on a circle around the poi at a given height (zenit)
+    radius_delta is used to define the offset between the camera radius (circle) and the light radius (dome)
+    '''
+
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    light_location = bproc.sampler.part_sphere(
+            center=poi,
+            radius=camera_radius+radius_delta,
+            part_sphere_dir_vector=[0, 0, 1],
+            mode="SURFACE",
+            dist_above_center=0.0,
+        )
+    
+    light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_location)
+    light2world  = bproc.math.build_transformation_mat(light_location, light_rotation_matrix)
+
+    theta = np.radians(circle_zenit)
+    circle_center = poi.copy()
+    circle_center[2]+= camera_radius * np.cos(theta) 
+    circle_radius = (camera_radius * np.sin(theta)) 
+    xyz_c = points_circle(circle_radius,circle_center,num_poses)
+
+    camera_poses = []
+    light_poses = []
+    for position in xyz_c:
+        light_poses.append(light2world)
+
+        rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - position)
+        cam2world = bproc.math.build_transformation_mat(position, rotation_matrix)
+        camera_poses.append(cam2world)
+
+    return camera_poses, light_poses
+
 
 
 def main(config_file : str, dataset_id : str) :
@@ -397,20 +504,22 @@ def main(config_file : str, dataset_id : str) :
         np.save(l, l_poses)
     
     metadata_path = BLENDER_PATH / dataset_id / 'metadata.yml'
-    with open(metadata_path,'w') as config_file :
-        yaml.dump(cfg.toDict(),config_file)
+    try : 
+        shutil.copy(cfg_file, metadata_path)                # copy yaml cfg file to blender directory 
+    except Exception as e: 
+        print(str(e))
        
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
-    parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    # parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
     
-    main(args.config_file,args.dataset_id)
+    # main(args.config_file,args.dataset_id)
 
-    #main('gen_config')
+    main('gen_config','two_domes_HD')
   
