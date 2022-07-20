@@ -419,6 +419,74 @@ def fixed_light_on_dome_camera_circle(objs: list, num_poses : int, camera_radius
 
     return camera_poses, light_poses
 
+def camera_from_above_light_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+    '''
+    the camera is fixed at the top position of its dome (defined by camera radius) looking down on the scene. 
+    the light goes on a circle around the poi at a given height (zenit) on the light dome (defined by radius_delta)
+    '''
+    
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    theta = np.radians(0)
+    cam_location = poi.copy()
+    cam_location[2]+= camera_radius * np.cos(theta) 
+
+    cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - cam_location)
+    cam2world  = bproc.math.build_transformation_mat(cam_location, cam_rotation_matrix)
+
+    theta2 = np.radians(circle_zenit)
+    circle_center = poi.copy()
+    circle_center[2]+= (camera_radius + radius_delta) * np.cos(theta2) 
+    circle_radius = ((camera_radius + radius_delta) * np.sin(theta2))
+    xyz_l = points_circle(circle_radius,circle_center,num_poses)
+
+    camera_poses = []
+    light_poses = []
+    for position in xyz_l:
+        camera_poses.append(cam2world)
+
+        light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - position)
+        light2world = bproc.math.build_transformation_mat(position, light_rotation_matrix)
+        light_poses.append(light2world)
+
+    return camera_poses, light_poses
+
+
+def light_from_above_camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+    '''
+    the light is fixed at the top position of its dome (defined by camera radius + radius_delta) illuminating the scene from above (noon style). 
+    the camera goes on a circle around the poi at a given height (zenit) on the camera dome (defined by camera_radius)
+    '''
+    
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    theta = np.radians(0)
+    light_location = poi.copy()
+    light_location[2]+= (camera_radius + radius_delta) * np.cos(theta) 
+
+    light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_location)
+    light2world  = bproc.math.build_transformation_mat(light_location, light_rotation_matrix)
+
+    theta2 = np.radians(circle_zenit)
+    circle_center = poi.copy()
+    circle_center[2]+= camera_radius * np.cos(theta2) 
+    circle_radius = camera_radius * np.sin(theta2)
+    xyz_l = points_circle(circle_radius,circle_center,num_poses)
+
+    camera_poses = []
+    light_poses = []
+    for position in xyz_l:
+        light_poses.append(light2world)
+
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - position)
+        cam2world = bproc.math.build_transformation_mat(position, cam_rotation_matrix)
+        camera_poses.append(cam2world)
+
+    return camera_poses, light_poses
+
+
 
 
 def main(config_file : str, dataset_id : str) :
@@ -513,13 +581,13 @@ def main(config_file : str, dataset_id : str) :
 
 if __name__ == '__main__':
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
-    # parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     
-    # args = parser.parse_args()
+    args = parser.parse_args()
     
-    # main(args.config_file,args.dataset_id)
+    main(args.config_file,args.dataset_id)
 
-    main('gen_config','two_domes_HD')
+    # main('gen_config','two_domes_HD')
   

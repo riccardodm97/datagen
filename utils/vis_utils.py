@@ -77,11 +77,11 @@ def samples_uniformly_hemisphere():
     plt.show()
 
 
-def points_on_dome(r,samples):
+def points_on_dome(r, num_points):
 
-    indices = np.arange(0, samples, dtype=float) + 0.5
+    indices = np.arange(0, num_points, dtype=float) + 0.5
 
-    theta = np.arccos(1 - 2*indices/samples)
+    theta = np.arccos(1 - 2*indices/num_points)
     phi = np.pi * (1 + sqrt(5)) * indices
 
     x,y,z = polar2cartesian(r,phi,theta)
@@ -101,10 +101,15 @@ def n_points_on_circle(r, center, num_points):
     xyz = np.stack((x,y,z),axis=-1)
     return xyz
 
+def points_circle(r, center, num_points):
+    return np.array([
+            [center[0] + cos(2 * pi / num_points * x) * r, center[1] + sin(2 * pi / num_points * x) * r, center[2]]
+                for x in range(0, num_points + 1)
+            ])
 
 
 
- 
+
 def poses_uniformly_on_dome_and_circle_light():
 
 
@@ -121,20 +126,11 @@ def poses_uniformly_on_dome_and_circle_light():
     circle1_radius = radius_c * np.sin(theta) + 0.4
     xyz_l1 = n_points_on_circle(circle1_radius,circle1_center,6)
 
-    # theta = np.radians(40)
-    # circle2_center = poi.copy()
-    # circle2_center[2]+= radius_c * np.cos(theta)                #DEBUG = oppure += ? la dome è centrata in 0 ma poi tutti i punti vengono alzati di poi[2]
-    # circle2_radius = radius_c * np.sin(theta) + 0.4
-    # xyz_l2 = n_points_on_circle(circle2_radius,circle2_center,6)
-
-    
-
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
     ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='blue')
     ax.scatter(xyz_l1[:,0],xyz_l1[:,1],xyz_l1[:,2],c='red')
-    # ax.scatter(xyz_l2[:,0],xyz_l2[:,1],xyz_l2[:,2],c='green')
     ax.scatter(*poi, c='black')
 
     plt.xlabel('x')
@@ -142,14 +138,14 @@ def poses_uniformly_on_dome_and_circle_light():
 
     plt.show()
 
-poses_uniformly_on_dome_and_circle_light()
+# poses_uniformly_on_dome_and_circle_light()
 
-def two_domes():
+def camera_light_on_two_domes_uniformly():
 
 
     radius_c = 0.65
-    radius_l = radius_c + 0.2
-    poi = np.array([0.8,0.2,0.2])
+    radius_l = radius_c + 0.4
+    poi = np.array([0.1,0.2,0.1])
 
 
     xyz_c = points_on_dome(radius_c,200)
@@ -172,7 +168,99 @@ def two_domes():
     plt.show()
 
 
-# two_domes()
+# camera_light_on_two_domes_uniformly()
+
+
+def fixed_camera_on_dome_light_circle():
+
+
+    radius_c = 0.65
+    radius_l = radius_c + 0.4
+    poi = np.array([0.1,0.2,0.1])
+
+
+    xyz_c = points_on_dome(radius_c,200)
+    xyz_c = xyz_c + poi                  
+
+    xyz_d = points_on_dome(radius_l,400)
+    xyz_d = xyz_d + poi
+
+    idx = np.random.randint(0, xyz_c.shape[0])
+    camera_pos = xyz_c[idx,:]
+
+    theta = np.radians(60)
+    circle_center = poi.copy()
+    circle_center[2]+= (radius_c + 0.4) * np.cos(theta) 
+    circle_radius = ((radius_c + 0.4) * np.sin(theta)) 
+    xyz_l = points_circle(circle_radius,circle_center,100)
+
+    theta2 = np.radians(60)
+    circle_center2 = poi.copy()
+    circle_center2[2]+= (radius_c) * np.cos(theta2) + 0.4
+    circle_radius2 = ((radius_c) * np.sin(theta2)) + 0.4
+    xyz_l2 = points_circle(circle_radius2,circle_center2,100)
+
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='black')
+    ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='blue')
+    ax.scatter(xyz_d[:,0],xyz_d[:,1],xyz_d[:,2],c='purple')
+    ax.scatter(xyz_l2[:,0],xyz_l2[:,1],xyz_l2[:,2],c='yellow')
+    ax.scatter(*poi, c='green')
+    ax.scatter(camera_pos[0],camera_pos[1],camera_pos[2],c='red')
+    ax.plot([camera_pos[0],poi[0]], [camera_pos[1],poi[1]],[camera_pos[2],poi[2]], linestyle="--")
+
+    plt.xlabel('x')
+    plt.ylabel('y')
+
+    plt.show()
+
+
+# fixed_camera_on_dome_light_circle()
 
 
 
+def light_from_above_camera_circle():
+
+
+    radius_c = 0.65
+    radius_l = radius_c + 0.4
+    poi = np.array([0.1,0.2,0.1])
+
+    theta = np.radians(0)
+    camera_pos = poi.copy()
+    camera_pos[2]+= radius_c * np.cos(theta) 
+
+    theta2 = np.radians(70)
+    circle_center = poi.copy()
+    circle_center[2]+= radius_l * np.cos(theta2) 
+    circle_radius = radius_l * np.sin(theta2)
+    xyz_l = points_circle(circle_radius,circle_center,200)
+
+
+    xyz_d1 = points_on_dome(radius_c,200)
+    xyz_d1 = xyz_d1 + poi                  
+
+    xyz_d2 = points_on_dome(radius_l,400)
+    xyz_d2 = xyz_d2 + poi
+
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(xyz_d1[:,0],xyz_d1[:,1],xyz_d1[:,2],c='blue')
+    ax.scatter(xyz_d2[:,0],xyz_d2[:,1],xyz_d2[:,2],c='purple')
+    ax.scatter(camera_pos[0],camera_pos[1],camera_pos[2],c='red')
+    ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='blue')
+    ax.scatter(*poi, c='green')
+    ax.plot([camera_pos[0],poi[0]], [camera_pos[1],poi[1]],[camera_pos[2],poi[2]],  linestyle="--")
+  
+    plt.xlabel('x')
+    plt.ylabel('y')
+
+    plt.show()
+
+
+light_from_above_camera_circle()
