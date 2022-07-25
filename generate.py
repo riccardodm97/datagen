@@ -144,7 +144,7 @@ def camera_dome_translated_light(objs: list, num_poses : int, t_vector : list, d
 def translated_light_circle_fixed_camera(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple:
     '''
     generate poses for the light at translated positions from points on a circle at some height on a hemisphere around the poi with a given radius 
-    generated poses for the camera at a fixed position on a dome
+    generate poses for the camera at a fixed position on a dome
     theta is the zenit in degree.
     both camera and lights are on the same height from the poi 
     '''

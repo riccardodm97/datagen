@@ -56,10 +56,10 @@ def main(dataset_id : str) :
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
     
-    type = 'train' if cfg.train else 'test'
+    folder = 'train' if cfg.train else f'test/{cfg.consistent_with}'  #DEBUG
 
     in_blender_tmp_folder = BLENDER_PATH / dataset_id
-    out_underfolder_path = DATASET_PATH / type / dataset_id
+    out_underfolder_path = DATASET_PATH / folder / dataset_id
     
     render_path = in_blender_tmp_folder / 'render'
     c_poses_path = in_blender_tmp_folder / 'c_poses.npy'
@@ -103,7 +103,6 @@ def main(dataset_id : str) :
 
     writer(SamplesSequence(samples))
 
-    # DEBUG
     try : 
         shutil.copy(cfg_file, out_underfolder_path)                # copy yaml cfg file to out directory 
         shutil.move(str(render_path), str(out_underfolder_path))   # move render folder from tmp blender one to dataset folder
