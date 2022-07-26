@@ -61,6 +61,7 @@ def points_on_dome(r, num_points):
     return xyz
 
 def n_points_on_circle_evenly_spaced(r, center, num_points):
+
     theta = np.linspace(0,2*np.pi,num_points,endpoint=False); 
     x = r * np.cos(theta)+center[0]
     y = r * np.sin(theta)+center[1]
@@ -78,7 +79,7 @@ def points_circle(r, center, num_points):
 
 
 #generate random camera poses on a dome around the scene 
-def generate_poses_on_dome(objs: list, radius: float, num_poses: int):
+def poses_on_dome(objs: list, num_poses: int, radius: float):
     '''
     generate random camera poses on a dome around the scene 
     '''  
@@ -100,6 +101,63 @@ def generate_poses_on_dome(objs: list, radius: float, num_poses: int):
         
 
     return poses
+
+#generate random camera poses on a dome around the scene with light in a fixed positon 
+def camera_on_dome_uniformly(objs: list, num_poses: int, camera_radius: float, light_pos : list):    
+    '''
+    Generate random camera poses on a dome around the scene with the light in a fixed position
+    '''  
+    #point of intereset in the scene (the camera always face the poi)
+    poi = bproc.object.compute_poi(objs)
+
+    xyz_c = points_on_dome(camera_radius,num_poses*2)  #double it because we only take the z positive (above poi )
+    np.random.shuffle(xyz_c)
+    xyz_c = xyz_c + poi 
+
+    light_tvec = np.array(light_pos)  
+    light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_tvec)         #DEBUG 
+    light2world  = bproc.math.build_transformation_mat(light_tvec, light_rotation_matrix)
+
+    camera_poses = []
+    light_poses = []
+    for position in xyz_c : 
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - position)
+        cam2world  = bproc.math.build_transformation_mat(position, cam_rotation_matrix)
+        camera_poses.append(cam2world)
+
+        light_poses.append(light2world)
+
+    return camera_poses, light_poses
+
+def camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, light_pos : list) -> Tuple:
+    '''
+    The light is on a fixed position in the scene determined by light_pos
+    The camera goes on a circle around the poi at a given height (zenit) of a dome determined by camera_radius
+    '''
+
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    light_tvec = np.array(light_pos)  
+    light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_tvec)        
+    light2world  = bproc.math.build_transformation_mat(light_tvec, light_rotation_matrix)
+
+    theta = np.radians(circle_zenit)
+    circle_center = poi.copy()
+    circle_center[2]+= camera_radius * np.cos(theta) 
+    circle_radius = (camera_radius * np.sin(theta)) 
+    xyz_c = points_circle(circle_radius,circle_center,num_poses)
+
+    camera_poses = []
+    light_poses = []
+    for position in xyz_c:
+        light_poses.append(light2world)
+
+        rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - position)
+        cam2world = bproc.math.build_transformation_mat(position, rotation_matrix)
+        camera_poses.append(cam2world)
+
+    return camera_poses, light_poses
 
 
 #generate random camera poses on a dome, and light poses translated by t from camera
@@ -252,11 +310,11 @@ def camera_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_p
 
     xyz_c = points_on_dome(dome_radius,num_pos_camera*2)  #double it because we only take the z positive (above poi )
     np.random.shuffle(xyz_c)   #to avoid having the poses ordered from top to bottom 
-    xyz_c = xyz_c + poi #DEBUG
+    xyz_c = xyz_c + poi 
 
     theta = np.radians(circle_zenit)
     circle_center = poi.copy()
-    circle_center[2]+= dome_radius * np.cos(theta) #DEBUG = oppure += ? la dome è centrata in 0 ma poi tutti i punti vengono alzati di poi[2]
+    circle_center[2]+= dome_radius * np.cos(theta) #la dome è centrata in 0 ma poi tutti i punti vengono alzati di poi[2]
     circle_radius = dome_radius * np.sin(theta) + circle_radius_delta
     xyz_l = n_points_on_circle_evenly_spaced(circle_radius,circle_center,num_pos_light)
 
@@ -581,13 +639,13 @@ def main(config_file : str, dataset_id : str) :
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
-    parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    # parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
     
-    main(args.config_file,args.dataset_id)
+    # main(args.config_file,args.dataset_id)
 
-    # main('gen_config','two_domes_HD')
+    main('gen_config','no_light_HD')
   
