@@ -146,7 +146,7 @@ def camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zeni
     circle_center = poi.copy()
     circle_center[2]+= camera_radius * np.cos(theta) 
     circle_radius = (camera_radius * np.sin(theta)) 
-    xyz_c = points_circle(circle_radius,circle_center,num_poses)
+    xyz_c = n_points_on_circle_evenly_spaced(circle_radius,circle_center,num_poses)
 
     camera_poses = []
     light_poses = []
@@ -647,5 +647,5 @@ if __name__ == '__main__':
     
     # main(args.config_file,args.dataset_id)
 
-    main('gen_config','no_light_HD')
+    main('gen_config','light_360')
   

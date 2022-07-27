@@ -56,6 +56,7 @@ def main(dataset_id : str) :
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
     
+    if not cfg.train : assert cfg.consistent_with is None, 'a train dataset should have this parameter to null'
     folder = 'train' if cfg.train else f'test/{cfg.consistent_with}'  #DEBUG
 
     in_blender_tmp_folder = BLENDER_PATH / dataset_id
