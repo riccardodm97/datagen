@@ -111,8 +111,8 @@ def camera_on_dome_uniformly(objs: list, num_poses: int, camera_radius: float, l
     poi = bproc.object.compute_poi(objs)
 
     xyz_c = points_on_dome(camera_radius,num_poses*2)  #double it because we only take the z positive (above poi )
-    np.random.shuffle(xyz_c)
     xyz_c = xyz_c + poi 
+    np.random.shuffle(xyz_c)
 
     light_tvec = np.array(light_pos)  
     light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_tvec)         #DEBUG 
@@ -195,6 +195,45 @@ def camera_dome_translated_light(objs: list, num_poses : int, t_vector : list, d
         light_rotation = bproc.camera.rotation_from_forward_vec(poi - light_location)
         light2world_matrix = bproc.math.build_transformation_mat(light_location, light_rotation)
         light_poses.append(light2world_matrix)
+
+    return camera_poses, light_poses
+
+
+#generate random camera poses on a dome, and n light poses translated by t_vec from camera
+def camera_uniform_dome_n_translated_lights(objs: list, num_poses : int, t_vecs : list, dome_radius: float) -> Tuple:
+    '''
+    generate random camera poses on a dome, while light poses are translated by a list of t_vec from the camera
+    '''
+
+    t_vecs = np.array(t_vecs)   #convert the t_vector in numpy array  
+    t_matrices = np.zeros((t_vecs.shape[0],4,4))
+
+    #generate translation matrices from translation vector list
+    for i, t_vec in enumerate(t_vecs) :
+        t_matrices[i] = np.eye(4)                                        
+        t_matrices[i,:3,3] = t_vec
+
+    #determine point of interest in the scene 
+    poi = bproc.object.compute_poi(objs)
+
+    xyz_c = points_on_dome(dome_radius,(num_poses//len(t_vecs))*2)  #divide by number of light poses, double it because we only take the z positive (above poi )
+    xyz_c = xyz_c + poi 
+    np.random.shuffle(xyz_c)   #to avoid having the poses ordered from top to bottom 
+
+    camera_poses = []
+    light_poses = []
+    for cam_location in xyz_c :
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - cam_location)
+        cam2world  = bproc.math.build_transformation_mat(cam_location, cam_rotation_matrix)
+
+        for t_matrix in t_matrices:
+            camera_poses.append(cam2world)
+
+            c2l = np.matmul(cam2world,t_matrix)
+            light_location = c2l[:3,3]
+            light_rotation = bproc.camera.rotation_from_forward_vec(poi - light_location)
+            light2world_matrix = bproc.math.build_transformation_mat(light_location, light_rotation)
+            light_poses.append(light2world_matrix)
 
     return camera_poses, light_poses
 
@@ -647,5 +686,5 @@ if __name__ == '__main__':
     
     # main(args.config_file,args.dataset_id)
 
-    main('gen_config','light_360')
+    main('gen_config','colocated_lights')
   

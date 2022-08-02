@@ -263,4 +263,46 @@ def light_from_above_camera_circle():
     plt.show()
 
 
-light_from_above_camera_circle()
+#light_from_above_camera_circle()
+
+
+def n_points_on_vertical_circle(r, center, num_points):
+
+    theta = np.linspace(0,2*np.pi,num_points,endpoint=False); 
+    x = r * np.cos(theta)+center[0]
+    y = np.broadcast_to(center[1],num_points)
+    z =  r * np.sin(theta)+center[2]
+
+    xyz = np.stack((x,y,z),axis=-1)
+    return xyz
+
+
+def camera_dome_light_ring():
+
+
+    radius_c = 1.0
+    radius_l = 0.2
+    poi = np.array([0.1,0.2,0.1])
+
+    xyz_c = points_on_dome(radius_c,100)
+    xyz_c = xyz_c + poi                  
+
+    one_xyz_l = n_points_on_vertical_circle(radius_l,xyz_c[30],30)
+    
+    xyz_del = np.delete(xyz_c,30,0)
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(one_xyz_l[:,0],one_xyz_l[:,1],one_xyz_l[:,2],c='blue')
+    ax.scatter(xyz_del[:,0],xyz_del[:,1],xyz_del[:,2],c='purple')
+    ax.scatter(xyz_c[30,0],xyz_c[30,1],xyz_c[30,2],c='red')
+    ax.scatter(*poi, c='green')
+
+  
+    plt.xlabel('x')
+    plt.ylabel('y')
+
+    plt.show()
+
+camera_dome_light_ring()
