@@ -385,8 +385,9 @@ def camera_light_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes
     poi = bproc.object.compute_poi(objs)
 
     xyz_c = points_on_dome(smaller_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
-    np.random.shuffle(xyz_c)
     xyz_c = xyz_c + poi 
+    np.random.shuffle(xyz_c)
+
 
     xyz_l = points_on_dome(smaller_dome_radius+delta_domes,num_poses*2)
     xyz_l = xyz_l + poi  
@@ -617,6 +618,9 @@ def main(config_file : str, dataset_id : str) :
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
     light.set_energy(cfg.light.energy)
 
+
+   
+
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
         bproc.camera.add_camera_pose(camera_poses[i])
@@ -686,5 +690,5 @@ if __name__ == '__main__':
     
     # main(args.config_file,args.dataset_id)
 
-    main('gen_config','colocated_lights')
+    main('gen_config','hotdog_oneDome')
   
