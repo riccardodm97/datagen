@@ -617,9 +617,7 @@ def main(config_file : str, dataset_id : str) :
     #light 
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
     light.set_energy(cfg.light.energy)
-
-
-   
+    light.blender_obj.data.shadow_soft_size = 0.05
 
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
@@ -690,5 +688,5 @@ if __name__ == '__main__':
     
     # main(args.config_file,args.dataset_id)
 
-    main('gen_config','hotdog_oneDome')
+    main('gen_config','testRadius')
   
