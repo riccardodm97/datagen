@@ -627,6 +627,8 @@ def main(config_file : str, dataset_id : str) :
         light.set_location(t,frame)
         light.set_rotation_euler(r_euler,frame)
     
+    bproc.renderer.enable_distance_output()  # DEBUG enable depth (ray distance) output
+    
     data = bproc.renderer.render()
 
     #save everything to temp blender folder to be later converted into underfolder 
@@ -688,5 +690,5 @@ if __name__ == '__main__':
     
     # main(args.config_file,args.dataset_id)
 
-    main('gen_config','testRadius')
+    main('gen_config','pepper_oneDome')
   

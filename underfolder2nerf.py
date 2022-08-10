@@ -73,9 +73,14 @@ def convert2nerf(uf, extension, output_folder, camera_key, image_key, pose_key, 
         pose = sample[pose_key]
         c2w = rotate_x_axis(pose)
 
+        light = sample['light']    #CHANGED
+        light = rotate_x_axis(light)
+
+
         frame = {
             "file_path": f"images/{src_image_file.stem}",
             "transform_matrix": c2w,
+            "light_matrix" : light, #CHANGED 
         }
         transform["frames"].append(frame)
         save_name = "transforms_" + extension + ".json"
