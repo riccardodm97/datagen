@@ -15,7 +15,7 @@ from pipelime.sequences.samples import PlainSample, SamplesSequence
 
 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
-DATASET_PATH = BASE_PATH/'data'/'dataset'
+DATASET_PATH = BASE_PATH/'data'/'datasets'
 BLENDER_PATH = BASE_PATH/'data'/'blender_tmp'
 
 

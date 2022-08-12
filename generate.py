@@ -18,7 +18,7 @@ import bpy
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
 SCENE_PATH =  BASE_PATH/'data'/'scenes'
 BLENDER_PATH = BASE_PATH/'data'/'blender_tmp'
-DATASET_FOLDER = BASE_PATH/'data'/'dataset'
+DATASET_FOLDER = BASE_PATH/'data'/'datasets'
 
 
 
@@ -606,7 +606,9 @@ def main(config_file : str, dataset_id : str) :
     objs = bproc.loader.load_blend(str(in_path), data_blocks=["objects"], obj_types=["mesh"])
     bproc.camera.set_resolution(cfg.images.width, cfg.images.height)
     bproc.renderer.set_noise_threshold(16)
-    bproc.renderer.enable_depth_output(False)
+    #bproc.renderer.enable_depth_output(False)
+    bproc.renderer.enable_distance_output(False,file_prefix='depth', output_key='depth')  # DEBUG enable depth (ray distance) output
+
 
     #load function from yaml
     kwargs_func = cfg.gen_function.toDict()   
@@ -617,7 +619,7 @@ def main(config_file : str, dataset_id : str) :
     #light 
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
     light.set_energy(cfg.light.energy)
-    light.blender_obj.data.shadow_soft_size = 0.05
+    light.blender_obj.data.shadow_soft_size = cfg.light.radius
 
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
@@ -627,7 +629,6 @@ def main(config_file : str, dataset_id : str) :
         light.set_location(t,frame)
         light.set_rotation_euler(r_euler,frame)
     
-    bproc.renderer.enable_distance_output()  # DEBUG enable depth (ray distance) output
     
     data = bproc.renderer.render()
 
@@ -682,13 +683,13 @@ def main(config_file : str, dataset_id : str) :
 
 if __name__ == '__main__':
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
-    # parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
+    parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     
-    # args = parser.parse_args()
+    args = parser.parse_args()
     
-    # main(args.config_file,args.dataset_id)
+    main(args.config_file,args.dataset_id)
 
-    main('gen_config','pepper_oneDome')
+    #main('gen_config','pepper_light')
   
