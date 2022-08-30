@@ -35,10 +35,10 @@ def get_scene_bbox(delimiter_obj: str) -> np.ndarray:
         [
             -scanbox_dimensions.x / 2,
             -scanbox_dimensions.y / 2,
-            0,                                   #TOCHANGE ? dimensions.z/2 ??  
+            -scanbox_dimensions.z/2,                    #CHANGED 0
             scanbox_dimensions.x / 2,
             scanbox_dimensions.y / 2,
-            scanbox_dimensions.z,
+            scanbox_dimensions.z/2,                     #CHANGED dimensions.z
         ]
     )
     return np.round(bbox, 4)
