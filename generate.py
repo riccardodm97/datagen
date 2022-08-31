@@ -386,14 +386,13 @@ def camera_light_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes
 
     xyz_c = points_on_dome(smaller_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
     xyz_c = xyz_c + poi 
-    np.random.shuffle(xyz_c)
-
 
     xyz_l = points_on_dome(smaller_dome_radius+delta_domes,num_poses*2)
     xyz_l = xyz_l + poi  
 
     c_idxs = np.arange(0,num_poses)
     l_idxs = c_idxs.copy()
+    np.random.shuffle(c_idxs)   #DEBUG 
     np.random.shuffle(l_idxs)
 
     camera_poses = []
