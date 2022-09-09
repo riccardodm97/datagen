@@ -584,6 +584,54 @@ def light_from_above_camera_circle(objs: list, num_poses : int, camera_radius: f
     return camera_poses, light_poses
 
 
+def camera_on_dome_light_on_noisy_dome(objs: list, num_poses : int, camera_dome_radius: float, perc_error_dome : float):
+    '''
+    generate poses for the camera uniformly on a dome with 'camera_dome_radius' radius. The pose for each light point 
+    is generated on a dome with the same radius +- a small random error. Both camera and light poses point towards
+    the point of interest. Camera and light poses are then randomly coupled to obtain a pair camera-light. 
+    '''
+
+    #determine point of interest in the scene
+    poi = bproc.object.compute_poi(objs)
+
+    xyz_c = points_on_dome(camera_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
+    xyz_c = xyz_c + poi 
+
+    xyz_l = points_on_dome(camera_dome_radius,num_poses*2)
+    xyz_l = xyz_l + poi  
+
+    c_idxs = np.arange(0,num_poses)
+    l_idxs = c_idxs.copy()
+    np.random.shuffle(c_idxs)   
+    np.random.shuffle(l_idxs)
+
+    #generate translation matrix 
+    t_matrix = np.eye(4)                                        
+    
+    camera_poses = []
+    light_poses = []
+    for c_id,l_id in zip(c_idxs,l_idxs):
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
+        cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+        camera_poses.append(cam2world)
+
+        light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
+        light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
+        
+        t_vec = np.array([0.0, 0.0, np.round(perc_error_dome * camera_dome_radius * np.random.uniform(-1.0,1.0),4)])
+        t_matrix[:3,3] = t_vec
+        light2world_z_trans = light2world @ t_matrix
+        
+        light_location = light2world_z_trans[:3,3]
+        light_rotation = bproc.camera.rotation_from_forward_vec(poi - light_location)
+        light2world_double = bproc.math.build_transformation_mat(light_location, light_rotation)
+        
+        assert np.allclose(light2world_z_trans,light2world_double,atol=1.e-5), 'matrices are different '
+
+        light_poses.append(light2world_z_trans)
+
+
+    return camera_poses, light_poses
 
 
 def main(config_file : str, dataset_id : str) :
