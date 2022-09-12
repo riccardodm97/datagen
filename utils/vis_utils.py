@@ -379,4 +379,4 @@ def show_poses(
     plt.show()
     plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('/home/eyecan/dev/data/datasets/train/pepper_impreciseDome20','light')
+show_poses('path','light')
