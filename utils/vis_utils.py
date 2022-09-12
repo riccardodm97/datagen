@@ -305,4 +305,78 @@ def camera_dome_light_ring():
 
     plt.show()
 
-camera_dome_light_ring()
+# camera_dome_light_ring()
+
+
+
+from pathlib import Path
+from typing import Optional, Sequence
+
+def show_poses(
+    input_folder: Path,
+    pose_key: str = 'pose',
+    scale: Optional[float] = None,
+    labels: bool = False
+) -> None:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from pipelime.sequences.readers.filesystem import UnderfolderReader
+    from sklearn.metrics import pairwise_distances
+
+    matplotlib.use("TkAgg")
+
+    def plot_poses(
+        poses: Sequence[np.ndarray], scale: Optional[float] = None, labels: bool = False
+    ) -> None:
+        poses_arr = np.stack(poses)
+        tvecs = poses_arr[:, :3, 3]
+
+        if scale is None:
+            dists = pairwise_distances(tvecs, metric="euclidean")
+            dists += np.eye(dists.shape[0]) * dists.max()
+            scale = dists.min(0).mean()
+
+        poses_arr[:, :3, :3] *= scale
+        xyz = [poses_arr[:, :3, x] for x in range(3)]
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        for vecs, color in zip(xyz, ["r", "g", "b"]):
+            vectors = np.concatenate([tvecs, vecs], axis=1)
+            X, Y, Z, U, V, W = zip(*vectors)
+            ax.quiver(X, Y, Z, U, V, W, color=color)
+
+        if labels:
+            for i, (x, y, z) in enumerate(tvecs):
+                ax.text(x, y, z, str(i))
+
+        ax.set_xlim([-1, 1])
+        ax.set_ylim([-1, 1])
+        ax.set_zlim([-1, 1])
+        plt.show()
+
+    uf = UnderfolderReader(input_folder)
+    poses = []
+    for sample in uf:
+        pose: np.ndarray = sample[pose_key]
+        if pose[3, 3] == 1:
+            poses.append(pose)
+
+    poses = np.array(poses)
+    t_vectors = poses[:,:3,3] 
+    distances = np.linalg.norm(t_vectors,axis=1)
+    print(f'min distance: {np.min(distances)}, max distance: {np.max(distances)}')
+
+    poses = np.array(poses)
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c='blue')
+    plt.xlabel('x')
+    plt.ylabel('y')
+
+    plt.show()
+    plot_poses(poses, scale=scale, labels=labels)
+
+show_poses('/home/eyecan/dev/data/datasets/train/pepper_impreciseDome20','light')
