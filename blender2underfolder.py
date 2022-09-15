@@ -13,10 +13,11 @@ import shutil
 from pipelime.sequences.writers.filesystem import UnderfolderWriter
 from pipelime.sequences.samples import PlainSample, SamplesSequence
 
-
+TASK = 'relight' 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
-DATASET_PATH = BASE_PATH/'data'/'datasets'
-BLENDER_PATH = BASE_PATH/'data'/'blender_tmp'
+TASK_PATH = BASE_PATH / TASK
+DATASET_PATH = TASK_PATH / 'data' / 'datasets'
+BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'
 
 
 IMAGE_KEY = 'image'

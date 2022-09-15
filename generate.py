@@ -14,11 +14,12 @@ from transforms3d import affines, euler
 import bpy
 
 
-
+TASK = 'relight' 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
-SCENE_PATH =  BASE_PATH/'data'/'scenes'
-BLENDER_PATH = BASE_PATH/'data'/'blender_tmp'
-DATASET_FOLDER = BASE_PATH/'data'/'datasets'
+TASK_PATH = BASE_PATH / TASK
+SCENE_PATH =  TASK_PATH / 'data' / 'scenes'
+BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'
+DATASET_PATH = TASK_PATH / 'data' / 'datasets'
 
 
 
@@ -636,7 +637,7 @@ def camera_on_dome_light_on_noisy_dome(objs: list, num_poses : int, camera_dome_
 
 def main(config_file : str, dataset_id : str) :
 
-    cfg_file = os.path.join(DATASET_FOLDER, config_file+'.yml')
+    cfg_file = os.path.join(DATASET_PATH, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
 
     with open(cfg_file, "r") as f:
