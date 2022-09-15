@@ -15,7 +15,7 @@ import bpy
 
 
 TASK = 'relight' 
-BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
+BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
 TASK_PATH = BASE_PATH / TASK
 SCENE_PATH =  TASK_PATH / 'data' / 'scenes'
 BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'

@@ -14,7 +14,7 @@ from pipelime.sequences.writers.filesystem import UnderfolderWriter
 from pipelime.sequences.samples import PlainSample, SamplesSequence
 
 TASK = 'relight' 
-BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE cosi è specifico per questo pc 
+BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
 TASK_PATH = BASE_PATH / TASK
 DATASET_PATH = TASK_PATH / 'data' / 'datasets'
 BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'
