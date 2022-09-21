@@ -9,13 +9,14 @@ import shutil
 
 import math
 import numpy as np
+from numpy import ndarray
 from dotmap import DotMap
 from transforms3d import affines, euler
 import bpy
 
 
-TASK = 'relight' 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
+TASK = 'real_relight' 
 TASK_PATH = BASE_PATH / TASK
 SCENE_PATH =  TASK_PATH / 'data' / 'scenes'
 BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'
@@ -80,13 +81,12 @@ def points_circle(r, center, num_points):
 
 
 #generate random camera poses on a dome around the scene 
-def poses_on_dome(objs: list, num_poses: int, radius: float):
+def poses_on_dome(poi: ndarray, num_poses: int, radius: float):
     '''
     generate random camera poses on a dome around the scene 
     '''  
-    #point of intereset in the scene (the camera always face the poi)
-    poi = bproc.object.compute_poi(objs)
-
+    # poi = point of intereset in the scene (the camera always face the poi)
+   
     poses = []
     for _ in range(num_poses):
         location = bproc.sampler.part_sphere(
@@ -104,12 +104,11 @@ def poses_on_dome(objs: list, num_poses: int, radius: float):
     return poses
 
 #generate random camera poses on a dome around the scene with light in a fixed positon 
-def camera_on_dome_uniformly(objs: list, num_poses: int, camera_radius: float, light_pos : list):    
+def camera_on_dome_uniformly(poi: ndarray, num_poses: int, camera_radius: float, light_pos : list):    
     '''
     Generate random camera poses on a dome around the scene with the light in a fixed position
     '''  
-    #point of intereset in the scene (the camera always face the poi)
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     xyz_c = points_on_dome(camera_radius,num_poses*2)  #double it because we only take the z positive (above poi )
     xyz_c = xyz_c + poi 
@@ -130,14 +129,13 @@ def camera_on_dome_uniformly(objs: list, num_poses: int, camera_radius: float, l
 
     return camera_poses, light_poses
 
-def camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, light_pos : list) -> Tuple:
+def camera_circle(poi: ndarray, num_poses : int, camera_radius: float, circle_zenit: int, light_pos : list) -> Tuple:
     '''
     The light is on a fixed position in the scene determined by light_pos
     The camera goes on a circle around the poi at a given height (zenit) of a dome determined by camera_radius
     '''
 
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     light_tvec = np.array(light_pos)  
     light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - light_tvec)        
@@ -162,19 +160,18 @@ def camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zeni
 
 
 #generate random camera poses on a dome, and light poses translated by t from camera
-def camera_dome_translated_light(objs: list, num_poses : int, t_vector : list, dome_radius: float) -> Tuple:
+def camera_dome_translated_light(poi: ndarray, num_poses : int, t_vector : list, dome_radius: float) -> Tuple:
     '''
     generate random camera poses on a dome, and light poses translated by t_vec from the camera
     '''
+    
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     t_vec = np.array(t_vector)   #convert the t_vector in numpy array  
 
     #generate translation matrix from translation vector
     t_matrix = np.eye(4)                                        
     t_matrix[:3,3] = t_vec
-
-    #determine point of interest in the scene 
-    poi = bproc.object.compute_poi(objs)
 
     camera_poses = []
     light_poses = []
@@ -201,10 +198,12 @@ def camera_dome_translated_light(objs: list, num_poses : int, t_vector : list, d
 
 
 #generate random camera poses on a dome, and n light poses translated by t_vec from camera
-def camera_uniform_dome_n_translated_lights(objs: list, num_poses : int, t_vecs : list, dome_radius: float) -> Tuple:
+def camera_uniform_dome_n_translated_lights(poi: ndarray, num_poses : int, t_vecs : list, dome_radius: float) -> Tuple:
     '''
     generate random camera poses on a dome, while light poses are translated by a list of t_vec from the camera
     '''
+
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     t_vecs = np.array(t_vecs)   #convert the t_vector in numpy array  
     t_matrices = np.zeros((t_vecs.shape[0],4,4))
@@ -214,8 +213,6 @@ def camera_uniform_dome_n_translated_lights(objs: list, num_poses : int, t_vecs 
         t_matrices[i] = np.eye(4)                                        
         t_matrices[i,:3,3] = t_vec
 
-    #determine point of interest in the scene 
-    poi = bproc.object.compute_poi(objs)
 
     xyz_c = points_on_dome(dome_radius,(num_poses//len(t_vecs))*2)  #divide by number of light poses, double it because we only take the z positive (above poi )
     xyz_c = xyz_c + poi 
@@ -239,7 +236,7 @@ def camera_uniform_dome_n_translated_lights(objs: list, num_poses : int, t_vecs 
     return camera_poses, light_poses
 
 
-def translated_light_circle_fixed_camera(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple:
+def translated_light_circle_fixed_camera(poi: ndarray, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple:
     '''
     generate poses for the light at translated positions from points on a circle at some height on a hemisphere around the poi with a given radius 
     generate poses for the camera at a fixed position on a dome
@@ -248,14 +245,14 @@ def translated_light_circle_fixed_camera(objs: list, num_poses : int, t_vector :
     '''
 
     assert t_vector is not None, ' this method takes a translation for the light wrt to the camera'
+
+    #poi = point of intereset in the scene (the camera always face the poi)
     
     t_vec = np.array(t_vector)   #convert the t_vector in numpy array 
   
     #generate translation matrix from translation vector
     t_matrix = np.eye(4)
     t_matrix[:3,3] = t_vec
-
-    poi = bproc.object.compute_poi(objs)
 
     camera_poses = []
     light_poses = []
@@ -288,7 +285,7 @@ def translated_light_circle_fixed_camera(objs: list, num_poses : int, t_vector :
     return camera_poses, light_poses
 
 
-def camera_circle_fixed_translated_light(objs: list, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple :
+def camera_circle_fixed_translated_light(poi: ndarray, num_poses : int, t_vector : list, dome_radius: float, dome_zenit: int) -> Tuple :
     '''
     generate poses for the camera on a circle at some height on a hemisphere around the poi with a given radius 
     generate poses for light at a fixed and translated position 
@@ -298,13 +295,13 @@ def camera_circle_fixed_translated_light(objs: list, num_poses : int, t_vector :
 
     assert t_vector is not None, ' this method takes a translation for the light wrt to the camera'
 
+    #poi = point of intereset in the scene (the camera always face the poi)
+
     t_vec = np.array(t_vector)   #convert the t_vector in numpy array 
   
     #generate translation matrix from translation vector
     t_matrix = np.eye(4)
     t_matrix[:3,3] = t_vec
-
-    poi = bproc.object.compute_poi(objs)
 
     camera_poses = []
     light_poses = []
@@ -337,7 +334,7 @@ def camera_circle_fixed_translated_light(objs: list, num_poses : int, t_vector :
     return camera_poses, light_poses
 
 
-def camera_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_pos_camera : int, num_pos_light : int, dome_radius: float, circle_zenit : int, circle_radius_delta : float):
+def camera_uniformly_on_dome_and_circle_light(poi: ndarray, tot_poses : int, num_pos_camera : int, num_pos_light : int, dome_radius: float, circle_zenit : int, circle_radius_delta : float):
     '''
     generate poses for the camera on a dome with a given radius while the light is at num_pos_light fixed positions on a cicle at a given zenit 
     with a radius which is bigger than the dome radius at a given zenit by a scalar addition of circle_radius_delta
@@ -345,8 +342,7 @@ def camera_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_p
 
     assert tot_poses == num_pos_camera * num_pos_light
 
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     xyz_c = points_on_dome(dome_radius,num_pos_camera*2)  #double it because we only take the z positive (above poi )
     np.random.shuffle(xyz_c)   #to avoid having the poses ordered from top to bottom 
@@ -375,15 +371,14 @@ def camera_uniformly_on_dome_and_circle_light(objs: list, tot_poses : int, num_p
     return camera_poses, light_poses
 
 
-def camera_light_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes : float, smaller_dome_radius: float):
+def camera_light_on_two_domes_uniformly(poi: ndarray, num_poses : int, delta_domes : float, smaller_dome_radius: float):
     '''
     generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
     the point of interest. Camera and light poses are then randomly coupled to obtain a pair camera-light 
     Delta domes is the positive difference between the bigger dome radius and the smaller one
     '''
 
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+   #poi = point of intereset in the scene (the camera always face the poi)
 
     xyz_c = points_on_dome(smaller_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
     xyz_c = xyz_c + poi 
@@ -442,14 +437,13 @@ def camera_light_on_two_domes_uniformly(objs: list, num_poses : int, delta_domes
 
 
 
-def fixed_camera_on_dome_light_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+def fixed_camera_on_dome_light_circle(poi: ndarray, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
     '''
     The camera is on a fixed position on a dome of given radius while the light goes on a circle around the poi at a given height (zenit)
     radius_delta is used to define the offset between the camera radius (dome) and the light radius (circle)
     '''
 
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     cam_location = bproc.sampler.part_sphere(
             center=poi,
@@ -480,14 +474,13 @@ def fixed_camera_on_dome_light_circle(objs: list, num_poses : int, camera_radius
     return camera_poses, light_poses
 
 
-def fixed_light_on_dome_camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+def fixed_light_on_dome_camera_circle(poi: ndarray, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
     '''
     The light is on a fixed position on a dome of given radius while the camera goes on a circle around the poi at a given height (zenit)
     radius_delta is used to define the offset between the camera radius (circle) and the light radius (dome)
     '''
 
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     light_location = bproc.sampler.part_sphere(
             center=poi,
@@ -517,14 +510,13 @@ def fixed_light_on_dome_camera_circle(objs: list, num_poses : int, camera_radius
 
     return camera_poses, light_poses
 
-def camera_from_above_light_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+def camera_from_above_light_circle(poi: ndarray, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
     '''
     the camera is fixed at the top position of its dome (defined by camera radius) looking down on the scene. 
     the light goes on a circle around the poi at a given height (zenit) on the light dome (defined by radius_delta)
     '''
     
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     theta = np.radians(0)
     cam_location = poi.copy()
@@ -551,14 +543,13 @@ def camera_from_above_light_circle(objs: list, num_poses : int, camera_radius: f
     return camera_poses, light_poses
 
 
-def light_from_above_camera_circle(objs: list, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
+def light_from_above_camera_circle(poi: ndarray, num_poses : int, camera_radius: float, circle_zenit: int, radius_delta : float) -> Tuple:
     '''
     the light is fixed at the top position of its dome (defined by camera radius + radius_delta) illuminating the scene from above (noon style). 
     the camera goes on a circle around the poi at a given height (zenit) on the camera dome (defined by camera_radius)
     '''
     
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     theta = np.radians(0)
     light_location = poi.copy()
@@ -585,15 +576,14 @@ def light_from_above_camera_circle(objs: list, num_poses : int, camera_radius: f
     return camera_poses, light_poses
 
 
-def camera_on_dome_light_on_noisy_dome(objs: list, num_poses : int, camera_dome_radius: float, perc_error_dome : float):
+def camera_on_dome_light_on_noisy_dome(poi: ndarray, num_poses : int, camera_dome_radius: float, perc_error_dome : float):
     '''
     generate poses for the camera uniformly on a dome with 'camera_dome_radius' radius. The pose for each light point 
     is generated on a dome with the same radius +- a small random error. Both camera and light poses point towards
     the point of interest. Camera and light poses are then randomly coupled to obtain a pair camera-light. 
     '''
 
-    #determine point of interest in the scene
-    poi = bproc.object.compute_poi(objs)
+    #poi = point of intereset in the scene (the camera always face the poi)
 
     xyz_c = points_on_dome(camera_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
     xyz_c = xyz_c + poi 
@@ -635,7 +625,7 @@ def camera_on_dome_light_on_noisy_dome(objs: list, num_poses : int, camera_dome_
     return camera_poses, light_poses
 
 
-def main(config_file : str, dataset_id : str) :
+def main(config_file : str, dataset_id : str, poi_name : str) :
 
     cfg_file = os.path.join(DATASET_PATH, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
@@ -655,16 +645,18 @@ def main(config_file : str, dataset_id : str) :
     bproc.camera.set_resolution(cfg.images.width, cfg.images.height)
     bproc.renderer.set_noise_threshold(16)
     #bproc.renderer.enable_depth_output(False)
-    bproc.renderer.enable_distance_output(False,file_prefix='depth', output_key='depth')  # DEBUG enable depth (ray distance) output
+    bproc.renderer.enable_distance_output(False, file_prefix='depth', output_key='depth')  # DEBUG enable depth (ray distance) output
 
+    # Determine point of interest in the scene to be faced 
+    poi = np.array(bpy.data.objects[poi_name].location) if poi_name is not None else bproc.object.compute_poi(objs)
 
-    #load function from yaml
+    # Dynamically oad function from yaml
     kwargs_func = cfg.gen_function.toDict()   
     func_name = kwargs_func.pop('f')
     gen_func = globals()[func_name]
-    camera_poses, light_poses = gen_func(objs,cfg.images.num,**kwargs_func)
+    camera_poses, light_poses = gen_func(poi,cfg.images.num,**kwargs_func)
 
-    #light 
+    # Add light to scene 
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
     light.set_energy(cfg.light.energy)
     light.blender_obj.data.shadow_soft_size = cfg.light.radius
@@ -680,7 +672,7 @@ def main(config_file : str, dataset_id : str) :
     
     data = bproc.renderer.render()
 
-    #save everything to temp blender folder to be later converted into underfolder 
+    # Save everything to temp blender folder to be later converted into underfolder 
 
     bproc.writer.write_hdf5(out_render_path, data)
 
@@ -734,10 +726,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
+    parser.add_argument('--poi', dest='poi', type=str, help='obj name of the poi', required=False)
     
     args = parser.parse_args()
     
-    main(args.config_file,args.dataset_id)
+    main(args.config_file,args.dataset_id,args.poi)
 
     #main('gen_config','pepper_light')
   
