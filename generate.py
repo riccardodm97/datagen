@@ -663,7 +663,7 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
 
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
-        bproc.camera.add_camera_pose(camera_poses[i])
+        bproc.camera.add_camera_pose(light_poses[i])
         t, r, _, _ = affines.decompose(light_poses[i])
         r_euler = euler.mat2euler(r)
         light.set_location(t,frame)
