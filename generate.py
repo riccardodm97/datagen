@@ -726,7 +726,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
-    parser.add_argument('--poi', dest='poi', type=str, help='obj name of the poi', required=False)
+    parser.add_argument('--poi', dest='poi', type=str, help='obj name for the poi', required=False)
     
     args = parser.parse_args()
     

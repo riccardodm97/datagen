@@ -48,7 +48,7 @@ def load_rendered_files(path: str) -> list:
 
     return render_files
 
-def main(dataset_id : str) :
+def main(dataset_id : str, subfolder : str) :
 
     cfg_file = os.path.join(BLENDER_PATH,dataset_id,'metadata.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
@@ -61,7 +61,8 @@ def main(dataset_id : str) :
     folder = 'train' if cfg.train else f'test/{cfg.consistent_with}'  #DEBUG
 
     in_blender_tmp_folder = BLENDER_PATH / dataset_id
-    out_underfolder_path = DATASET_PATH / folder / dataset_id
+    out_folder = DATASET_PATH / folder / dataset_id
+    out_underfolder_path = out_folder / subfolder 
     
     render_path = in_blender_tmp_folder / 'render'
     c_poses_path = in_blender_tmp_folder / 'c_poses.npy'
@@ -106,9 +107,9 @@ def main(dataset_id : str) :
     writer(SamplesSequence(samples))
 
     try : 
-        shutil.copy(cfg_file, out_underfolder_path)                # copy yaml cfg file to out directory 
-        shutil.move(str(render_path), str(out_underfolder_path))   # move render folder from tmp blender one to dataset folder
-        shutil.rmtree(in_blender_tmp_folder)                       # completely delete blender tmp folder 
+        shutil.copy(cfg_file, out_folder)                # copy yaml cfg file to out directory 
+        shutil.move(str(render_path), str(out_folder))   # move render folder from tmp blender one to dataset folder
+        shutil.rmtree(in_blender_tmp_folder)             # completely delete blender tmp folder 
     except Exception as e: 
         print(str(e))
 
@@ -117,7 +118,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', dest='dataset_id', type=str, help='id of the dataset', required=True)
+    parser.add_argument('--subf', dest='subfolder', type=str, help='subfolder for uf', default= 'uf')
     
     args = parser.parse_args()
     
-    main(args.dataset_id)
+    main(args.dataset_id, args.subfolder)
