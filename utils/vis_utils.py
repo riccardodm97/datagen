@@ -379,4 +379,4 @@ def show_poses(
     plt.show()
     plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('path','light')
+show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_charuco/uf','pose')
