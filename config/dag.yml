@@ -1,0 +1,41 @@
+operations:
+    - map: 
+        stage: 
+            remap-key: 
+                remap:
+                    Limage : image 
+                    pose : cpose  
+                    light : gtlight
+                remove_missing : false 
+    - map:
+        stage:
+            multi_board_detect_1:
+                debug: $var(detect.debug, default=False)
+    - filter_nan:
+            key: poses
+    - merge_detections:
+            refiner: $var(compute_poses.refiner)
+    - filter_nan:
+            key: pose
+    - map :
+        stage : 
+            filter-keys:
+                key_list : 
+                    $for(5):
+                        - charuco$index 
+                negate : true 
+    - map: 
+        stage: 
+            remap-key: 
+                remap:
+                    image : Limage
+                    pose : light  
+                    cpose : pose
+                    Cimage : image 
+                remove_missing : false 
+    - map :
+        stage : 
+            filter-keys:
+                key_list : [poses,detections,Limage] 
+                negate : true 
+    

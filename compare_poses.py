@@ -53,8 +53,6 @@ def compare_poses(in_folder : str, pred_key : str, gt_key : str):
     print(f'rotation z errors : mean {np.mean(r_errors)}, std : {np.std(r_errors)}, median: {np.median(t_errors)}, min : {np.min(r_errors)}, max : {np.max(r_errors)}')
     print(f'rotation errors : mean {np.mean(theta_angles)}, std : {np.std(theta_angles)}, median: {np.median(t_errors)}, min : {np.min(theta_angles)}, max : {np.max(theta_angles)}')
 
-    print(f'pose with max translation error {np.argmax(t_errors)}')
-
     show_poses(in_folder,pred_key,t_errors)
 
     

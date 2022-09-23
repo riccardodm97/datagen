@@ -1,0 +1,18 @@
+detect:
+    debug: false
+
+compute_poses:
+    refiner:
+        refiner_type: bundle_adjustment
+
+        target_board: 0
+        on_manifold: true
+        device: cpu
+        lr: 1E-3
+        num_steps: 10000
+        plateau: 1E-4
+        time_budget: null
+        patience: 100
+
+        debug: true
+        verbose: 10

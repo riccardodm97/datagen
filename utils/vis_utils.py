@@ -367,7 +367,7 @@ def show_poses(
     poses = np.array(poses)
     t_vectors = poses[:,:3,3] 
     distances = np.linalg.norm(t_vectors,axis=1)
-    print(f'min distance: {np.min(distances)}, max distance: {np.max(distances)}')
+    print(f'distance from origin -> min: {np.min(distances)}, max: {np.max(distances)}')
 
     poses = np.array(poses)
     fig = plt.figure(figsize=(10,10))
@@ -381,7 +381,9 @@ def show_poses(
     plt.xlabel('x')
     plt.ylabel('y')
 
-    fig.colorbar(p)
+    
+    cbar = fig.colorbar(p)
+    cbar.set_label('error')
 
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)

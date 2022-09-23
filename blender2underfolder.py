@@ -20,7 +20,8 @@ DATASET_PATH = TASK_PATH / 'data' / 'datasets'
 BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'
 
 
-IMAGE_KEY = 'image'
+CAMERA_IMAGE_KEY = 'Cimage'
+LIGHT_IMAGE_KEY = 'Limage'
 DEPTH_KEY = 'depth'
 LIGHT_KEY = 'light'
 POSE_KEY = 'pose'
@@ -28,7 +29,8 @@ CAMERA_KEY = 'camera'
 BBOX_KEY = 'bbox'
 
 EXTENSIONS = {
-        IMAGE_KEY: "png",
+        CAMERA_IMAGE_KEY: "png",
+        LIGHT_IMAGE_KEY: "png",
         DEPTH_KEY: "npy",
         LIGHT_KEY: "txt",
         CAMERA_KEY: "yml",
@@ -64,7 +66,8 @@ def main(dataset_id : str, subfolder : str) :
     out_folder = DATASET_PATH / folder / dataset_id
     out_underfolder_path = out_folder / subfolder 
     
-    render_path = in_blender_tmp_folder / 'render'
+    camera_render_path = in_blender_tmp_folder / 'crender'
+    light_render_path = in_blender_tmp_folder / 'lrender'
     c_poses_path = in_blender_tmp_folder / 'c_poses.npy'
     l_poses_path = in_blender_tmp_folder / 'l_poses.npy'
     bbox_path = in_blender_tmp_folder / 'bbox.npy'
@@ -85,16 +88,22 @@ def main(dataset_id : str, subfolder : str) :
     with open(camera_metadata_path, 'rb') as m:
         camera_metadata = pickle.load(m)
         
-    render_files = load_rendered_files(render_path)
+    crender_files = load_rendered_files(camera_render_path)
+    lrender_files = load_rendered_files(light_render_path)
+
 
     samples = []
-    for idx, file_h5py in enumerate(render_files):
-        file_h5py = h5py.File(render_path / file_h5py, mode="r")
-        rgb = file_h5py["colors"][:]
-        depth = file_h5py["depth"][:]
+    for idx, (cfile_h5py, lfile_h5py) in enumerate(zip(crender_files,lrender_files)):
+        cfile_h5py = h5py.File(camera_render_path / cfile_h5py, mode="r")
+        camera_image = cfile_h5py["colors"][:]
+        depth = cfile_h5py["depth"][:]
+
+        lfile_h5py = h5py.File(light_render_path / lfile_h5py, mode="r")
+        light_image = lfile_h5py["colors"][:]
 
         data = {
-            IMAGE_KEY: rgb.astype(np.uint8),
+            CAMERA_IMAGE_KEY: camera_image.astype(np.uint8),
+            LIGHT_IMAGE_KEY: light_image.astype(np.uint8),
             DEPTH_KEY: depth,
             CAMERA_KEY: camera_metadata,
             BBOX_KEY: bbox,
@@ -108,7 +117,8 @@ def main(dataset_id : str, subfolder : str) :
 
     try : 
         shutil.copy(cfg_file, out_folder)                # copy yaml cfg file to out directory 
-        shutil.move(str(render_path), str(out_folder))   # move render folder from tmp blender one to dataset folder
+        shutil.move(str(camera_render_path), str(out_folder / 'render'))   # move render folder from tmp blender one to dataset folder
+        shutil.move(str(light_render_path), str(out_folder / 'render'))   # move render folder from tmp blender one to dataset folder
         shutil.rmtree(in_blender_tmp_folder)             # completely delete blender tmp folder 
     except Exception as e: 
         print(str(e))
