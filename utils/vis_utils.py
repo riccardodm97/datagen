@@ -372,11 +372,14 @@ def show_poses(
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c='blue')
+    a = np.ones((150))
+    cmhot = plt.get_cmap("hot")
+
+    ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c=a,cmap=cmhot)
     plt.xlabel('x')
     plt.ylabel('y')
 
     plt.show()
-    plot_poses(poses, scale=scale, labels=labels)
+    #plot_poses(poses, scale=scale, labels=labels)
 
 show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_charuco/uf','pose')
