@@ -314,7 +314,8 @@ from typing import Optional, Sequence
 
 def show_poses(
     input_folder: Path,
-    pose_key: str = 'pose',
+    pose_key: str,
+    colors : np.ndarray = None,
     scale: Optional[float] = None,
     labels: bool = False
 ) -> None:
@@ -372,14 +373,17 @@ def show_poses(
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
-    a = np.ones((150))
+    if colors is None : 
+        colors = np.ones(poses.shape[0])
     cmhot = plt.get_cmap("hot")
 
-    ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c=a,cmap=cmhot)
+    p = ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c=colors,cmap=cmhot)
     plt.xlabel('x')
     plt.ylabel('y')
+
+    fig.colorbar(p)
 
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_charuco/uf','pose')
+#show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_charuco/uf','light')
