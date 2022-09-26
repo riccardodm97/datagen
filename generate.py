@@ -625,6 +625,63 @@ def camera_on_dome_light_on_noisy_dome(poi: ndarray, num_poses : int, camera_dom
     return camera_poses, light_poses
 
 
+def multi_dataset_fixed_light_per_dataset(poi: ndarray, num_poses : int, dataset_num : int, camera_dome_radius: float, perc_error_dome : float):
+    '''
+    generate multiple dataset, each with a fixed light and camera positions randomly distributed on a dome. Light positions are still drawn from
+    a list of poses uniformly distributed on a dome (noisy dome), but in each dataset its position stay fixed. 
+    '''
+
+    #poi = point of intereset in the scene (the camera always face the poi)
+
+    xyz_c = points_on_dome(camera_dome_radius,num_poses*dataset_num*2)  #double it because we only take the z positive (above poi )
+    xyz_c = xyz_c + poi 
+
+    xyz_l = points_on_dome(camera_dome_radius,dataset_num*2)
+    xyz_l = xyz_l + poi  
+
+    c_idxs = np.arange(0,num_poses)
+    l_idxs = c_idxs.copy()
+    np.random.shuffle(c_idxs)   
+    np.random.shuffle(l_idxs)
+
+    #generate translation matrix 
+    t_matrix = np.eye(4)       
+
+    camera_list = []   # for each dataset a list of camera poses 
+    light_list = []    # for each dataset a list of light poses 
+
+    for d in range(dataset_num): 
+
+        l_id = l_idxs[d]
+
+        camera_poses = []
+        light_poses = []
+        for c_id in c_idxs :
+            cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
+            cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+            camera_poses.append(cam2world)
+
+            light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
+            light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
+            
+            t_vec = np.array([0.0, 0.0, np.round(perc_error_dome * camera_dome_radius * np.random.uniform(-1.0,1.0),4)])
+            t_matrix[:3,3] = t_vec
+            light2world_z_trans = light2world @ t_matrix
+            
+            light_location = light2world_z_trans[:3,3]
+            light_rotation = bproc.camera.rotation_from_forward_vec(poi - light_location)
+            light2world_double = bproc.math.build_transformation_mat(light_location, light_rotation)
+            
+            assert np.allclose(light2world_z_trans,light2world_double,atol=1.e-5), 'matrices are different '
+
+            light_poses.append(light2world_z_trans)
+
+        camera_list.append(camera_poses)
+        light_list.append(light_poses)
+        
+    return camera_list, light_list
+
+
 def main(config_file : str, dataset_id : str, poi_name : str) :
 
     cfg_file = os.path.join(DATASET_PATH, config_file+'.yml')
@@ -635,9 +692,7 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
         cfg = DotMap(cfg_dict,_dynamic=False)
     
     in_path = SCENE_PATH / (cfg.scene.input + '.blend')                  # path of the blender scene to load
-    camera_render_path = BLENDER_PATH / dataset_id / 'crender'            # path where the rendered camera images will be stored as hdf5 files
-    light_render_path = BLENDER_PATH / dataset_id / 'lrender'            # path where the rendered camera images will be stored as hdf5 files
-
+    tmp_dataset_path = BLENDER_PATH / dataset_id
 
     bproc.init()
     # Transparent Background
@@ -656,7 +711,7 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
     kwargs_func = cfg.gen_function.toDict()   
     func_name = kwargs_func.pop('f')
     gen_func = globals()[func_name]
-    camera_poses, light_poses = gen_func(poi,cfg.images.num,**kwargs_func)
+    camera_poses_datasets, light_poses_datasets = gen_func(poi,cfg.images.num,**kwargs_func)
 
     # Add light to scene 
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
@@ -665,78 +720,86 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
 
     #RENDER CAMERA AND LIGHT IMAGES 
 
-    for i in range(cfg.images.num):
-        frame = bpy.context.scene.frame_end
-        bproc.camera.add_camera_pose(light_poses[i])
-        t, r, _, _ = affines.decompose(light_poses[i])
-        r_euler = euler.mat2euler(r)
-        light.set_location(t,frame)
-        light.set_rotation_euler(r_euler,frame)
-    
-    data = bproc.renderer.render()
+    for l_dataset, c_dataset in zip(light_poses_datasets,camera_poses_datasets) : 
 
-    bproc.writer.write_hdf5(light_render_path, data)
+        #TODO save n dataset in separate folders 
 
-    bproc.utility.reset_keyframes()   # Clear all key frames from the previous run
+        camera_render_path = tmp_dataset_path / 'crender'            # path where the rendered camera images will be stored as hdf5 files
+        light_render_path = tmp_dataset_path / 'lrender'            # path where the rendered camera images will be stored as hdf5 files
+        camera_metadata_path = tmp_dataset_path / 'camera_metadata.pickle' 
+        bbox_path = tmp_dataset_path / 'bbox.npy'
+        c_poses_path = tmp_dataset_path / 'c_poses.npy'
+        l_poses_path = tmp_dataset_path / 'l_poses.npy'
+        metadata_path = tmp_dataset_path / 'metadata.yml'
 
-    #bpy.data.objects['CharucoBase'].hide_render = True 
+        for i in range(cfg.images.num):
+            frame = bpy.context.scene.frame_end
+            bproc.camera.add_camera_pose(l_dataset[i])
+            t, r, _, _ = affines.decompose(l_dataset[i])
+            r_euler = euler.mat2euler(r)
+            light.set_location(t,frame)
+            light.set_rotation_euler(r_euler,frame)
+        
+        data = bproc.renderer.render()
 
-    for i in range(cfg.images.num):
-        frame = bpy.context.scene.frame_end
-        bproc.camera.add_camera_pose(camera_poses[i])
-        t, r, _, _ = affines.decompose(light_poses[i])
-        r_euler = euler.mat2euler(r)
-        light.set_location(t,frame)
-        light.set_rotation_euler(r_euler,frame)  
-    
-    data = bproc.renderer.render()
+        bproc.writer.write_hdf5(light_render_path, data)
 
-    bproc.writer.write_hdf5(camera_render_path, data)  # Save everything to temp blender folder to be later converted into underfolder 
+        bproc.utility.reset_keyframes()   # Clear all key frames from the previous run
 
-    #SAVE ALL TO FILE 
+        for i in range(cfg.images.num):
+            frame = bpy.context.scene.frame_end
+            bproc.camera.add_camera_pose(c_dataset[i])
+            t, r, _, _ = affines.decompose(l_dataset[i])
+            r_euler = euler.mat2euler(r)
+            light.set_location(t,frame)
+            light.set_rotation_euler(r_euler,frame)  
+        
+        data = bproc.renderer.render()
 
-    camera_metadata = {
-        "camera_pose": {
-            "rotation": np.eye(3).tolist(),
-            "translation": [0, 0, 0],
-        },
-        "intrinsics": {
-            "camera_matrix": bproc.camera.get_intrinsics_as_K_matrix().tolist(),
-            "dist_coeffs": np.zeros((5, 1)).tolist(),
-            "image_size": [cfg.images.width, cfg.images.height],
-        },
-    }
-    camera_metadata_path = BLENDER_PATH / dataset_id / 'camera_metadata.pickle' 
-    with open(camera_metadata_path, 'wb') as m:
-        pickle.dump(camera_metadata, m)
+        bproc.writer.write_hdf5(camera_render_path, data)  # Save everything to temp blender folder to be later converted into underfolder 
 
-    bbox = get_scene_bbox(cfg.scene.delimiter_obj)
-    bbox_path = BLENDER_PATH / dataset_id / 'bbox.npy'
-    with open(bbox_path, 'wb') as f:
-        np.save(f, bbox)
+        #SAVE ALL TO FILE 
 
-    c_poses, l_poses = [], []
-    for c_pose, l_pose in zip(camera_poses,light_poses): #DEBUG
-        camera_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
-            c_pose, ["X", "-Y", "-Z"]
-        )
-        light_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
-            l_pose, ["X", "-Y", "-Z"]
-        )
-        c_poses.append(camera_pose)
-        l_poses.append(light_pose)
-    
-    c_poses_path = BLENDER_PATH / dataset_id / 'c_poses.npy'
-    l_poses_path = BLENDER_PATH / dataset_id / 'l_poses.npy'
-    with open(c_poses_path,'wb') as c, open(l_poses_path,'wb') as l:
-        np.save(c, c_poses)
-        np.save(l, l_poses)
-    
-    metadata_path = BLENDER_PATH / dataset_id / 'metadata.yml'
-    try : 
-        shutil.copy(cfg_file, metadata_path)                # copy yaml cfg file to blender directory 
-    except Exception as e: 
-        print(str(e))
+        camera_metadata = {
+            "camera_pose": {
+                "rotation": np.eye(3).tolist(),
+                "translation": [0, 0, 0],
+            },
+            "intrinsics": {
+                "camera_matrix": bproc.camera.get_intrinsics_as_K_matrix().tolist(),
+                "dist_coeffs": np.zeros((5, 1)).tolist(),
+                "image_size": [cfg.images.width, cfg.images.height],
+            },
+        }
+       
+        with open(camera_metadata_path, 'wb') as m:
+            pickle.dump(camera_metadata, m)
+
+        bbox = get_scene_bbox(cfg.scene.delimiter_obj)
+        
+        with open(bbox_path, 'wb') as f:
+            np.save(f, bbox)
+
+        c_poses, l_poses = [], []
+        for c_pose, l_pose in zip(c_dataset,l_dataset): #DEBUG
+            camera_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+                c_pose, ["X", "-Y", "-Z"]
+            )
+            light_pose = bproc.math.change_source_coordinate_frame_of_transformation_matrix(
+                l_pose, ["X", "-Y", "-Z"]
+            )
+            c_poses.append(camera_pose)
+            l_poses.append(light_pose)
+        
+        
+        with open(c_poses_path,'wb') as c, open(l_poses_path,'wb') as l:
+            np.save(c, c_poses)
+            np.save(l, l_poses)
+        
+        try : 
+            shutil.copy(cfg_file, metadata_path)                # copy yaml cfg file to blender directory 
+        except Exception as e: 
+            print(str(e))
        
 
 
