@@ -663,22 +663,7 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
     light.set_energy(cfg.light.energy)
     light.blender_obj.data.shadow_soft_size = cfg.light.radius
 
-    for i in range(cfg.images.num):
-        frame = bpy.context.scene.frame_end
-        bproc.camera.add_camera_pose(camera_poses[i])
-        t, r, _, _ = affines.decompose(light_poses[i])
-        r_euler = euler.mat2euler(r)
-        light.set_location(t,frame)
-        light.set_rotation_euler(r_euler,frame)
-    
-    
-    data = bproc.renderer.render()
-
-    bproc.writer.write_hdf5(camera_render_path, data)  # Save everything to temp blender folder to be later converted into underfolder 
-
-
-    #REDO THE SAME TO RENDER IMAGES FROM LIGHT POSITIONS 
-    bproc.utility.reset_keyframes()   # Clear all key frames from the previous run
+    #RENDER CAMERA AND LIGHT IMAGES 
 
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
@@ -691,6 +676,22 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
     data = bproc.renderer.render()
 
     bproc.writer.write_hdf5(light_render_path, data)
+
+    bproc.utility.reset_keyframes()   # Clear all key frames from the previous run
+
+    #bpy.data.objects['CharucoBase'].hide_render = True 
+
+    for i in range(cfg.images.num):
+        frame = bpy.context.scene.frame_end
+        bproc.camera.add_camera_pose(camera_poses[i])
+        t, r, _, _ = affines.decompose(light_poses[i])
+        r_euler = euler.mat2euler(r)
+        light.set_location(t,frame)
+        light.set_rotation_euler(r_euler,frame)  
+    
+    data = bproc.renderer.render()
+
+    bproc.writer.write_hdf5(camera_render_path, data)  # Save everything to temp blender folder to be later converted into underfolder 
 
     #SAVE ALL TO FILE 
 
