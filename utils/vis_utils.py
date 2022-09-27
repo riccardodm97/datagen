@@ -391,4 +391,4 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes_4sameLight/uf','pose')
+#show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes_4sameLight/uf','pose')
