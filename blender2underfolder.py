@@ -66,8 +66,9 @@ def main(dataset_id : str, subfolder : str) :
     out_folder = DATASET_PATH / folder / dataset_id
     out_underfolder_path = out_folder / subfolder 
     
-    camera_render_path = in_blender_tmp_folder / 'crender'
-    light_render_path = in_blender_tmp_folder / 'lrender'
+    tmp_render_path = in_blender_tmp_folder / 'render'
+    camera_render_path =  tmp_render_path / 'crender'
+    light_render_path = tmp_render_path /  'lrender'
     c_poses_path = in_blender_tmp_folder / 'c_poses.npy'
     l_poses_path = in_blender_tmp_folder / 'l_poses.npy'
     bbox_path = in_blender_tmp_folder / 'bbox.npy'
@@ -117,8 +118,7 @@ def main(dataset_id : str, subfolder : str) :
 
     try : 
         shutil.copy(cfg_file, out_folder)                # copy yaml cfg file to out directory 
-        shutil.move(str(camera_render_path), str(out_folder / 'render'))   # move render folder from tmp blender one to dataset folder
-        shutil.move(str(light_render_path), str(out_folder / 'render'))   # move render folder from tmp blender one to dataset folder
+        shutil.move(str(tmp_render_path), str(out_folder / 'render'))   # move render folder from tmp blender one to dataset folder
         shutil.rmtree(in_blender_tmp_folder)             # completely delete blender tmp folder 
     except Exception as e: 
         print(str(e))

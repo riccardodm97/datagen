@@ -634,9 +634,10 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
         cfg_dict = yaml.load(f, Loader=yaml.FullLoader)
         cfg = DotMap(cfg_dict,_dynamic=False)
     
-    in_path = SCENE_PATH / (cfg.scene.input + '.blend')                  # path of the blender scene to load
-    camera_render_path = BLENDER_PATH / dataset_id / 'crender'            # path where the rendered camera images will be stored as hdf5 files
-    light_render_path = BLENDER_PATH / dataset_id / 'lrender'            # path where the rendered camera images will be stored as hdf5 files
+    in_path = SCENE_PATH / (cfg.scene.input + '.blend')                   # path of the blender scene to load
+    render_path = BLENDER_PATH / dataset_id / 'render'
+    camera_render_path = render_path / 'crender'            # path where the rendered camera images will be stored as hdf5 files
+    light_render_path = render_path / 'lrender'             # path where the rendered camera images will be stored as hdf5 files
 
 
     bproc.init()
