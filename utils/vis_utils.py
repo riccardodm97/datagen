@@ -373,7 +373,7 @@ def show_poses(
     n_unique_poses = len(np.unique(poses,axis=0))
     
 
-    print(f'unique {pose_key} poses : {n_unique_poses}, which is {n_unique_poses/n_poses*100}% of all poses' )
+    print(f'unique {pose_key}_key poses : {n_unique_poses}, which is {n_unique_poses/n_poses*100}% of all poses' )
     
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
@@ -391,4 +391,4 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-#show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes_2sameLight/uf','light')
+show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes_4sameLight/uf','pose')
