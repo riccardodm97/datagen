@@ -802,7 +802,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    main(args.config_file,args.dataset_id,args.poi)
+    main(args.config_file,args.dataset_id,args.poi,args.hide_obj)
 
     #main('gen_config','pepper_light')
   
