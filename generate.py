@@ -624,6 +624,57 @@ def camera_on_dome_light_on_noisy_dome(poi: ndarray, num_poses : int, camera_dom
 
     return camera_poses, light_poses
 
+def camera_and_repeated_lights_on_dome(poi: ndarray, num_poses : int, num_repeated_lights : int, smaller_dome_radius: float, delta_domes : float, perc_error_dome : float):
+    '''
+    generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
+    the point of interest. Delta domes is the positive difference between the bigger dome radius and the smaller one. 
+    Camera and light poses are then randomly coupled to obtain a pair camera-light, but the number of different light poses is [num_poses/num_repeated_lights],
+    which is only a fraction of the different camera poses. In this way [num_repeated_lights] different camera points will be paired with the same light point. 
+    Perc_error_dome gives the possibility to add a random error on the positioning of the light (which will then be on a noisy dome)
+
+    '''
+
+    # poi = point of intereset in the scene (the camera always face the poi)
+
+    xyz_c = points_on_dome(smaller_dome_radius,num_poses*2)  #double it because we only take the z positive (above poi )
+    xyz_c = xyz_c + poi 
+
+    xyz_l = points_on_dome(smaller_dome_radius+delta_domes, math.ceil(num_poses / num_repeated_lights) * 2)
+    xyz_l = xyz_l + poi  
+
+    c_idxs = np.arange(0,num_poses)
+    l_idxs = np.arange(0,math.ceil(num_poses / num_repeated_lights))
+    l_idxs = np.repeat(l_idxs,num_repeated_lights)[:num_poses]
+
+    np.random.shuffle(c_idxs)  
+    np.random.shuffle(l_idxs)
+
+    t_matrix = np.eye(4)                                        
+    
+    camera_poses = []
+    light_poses = []
+    for c_id,l_id in zip(c_idxs,l_idxs):
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
+        cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+        camera_poses.append(cam2world)
+
+        light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
+        light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
+        
+        t_vec = np.array([0.0, 0.0, np.round(perc_error_dome * smaller_dome_radius * np.random.uniform(-1.0,1.0),4)])
+        t_matrix[:3,3] = t_vec
+        light2world_z_trans = light2world @ t_matrix
+        
+        light_location = light2world_z_trans[:3,3]
+        light_rotation = bproc.camera.rotation_from_forward_vec(poi - light_location)
+        light2world_double = bproc.math.build_transformation_mat(light_location, light_rotation)
+        
+        assert np.allclose(light2world_z_trans,light2world_double,atol=1.e-5), 'matrices are different '
+
+        light_poses.append(light2world_z_trans)
+
+    return camera_poses, light_poses
+
 
 def main(config_file: str, dataset_id: str, poi_name: str, hide_obj: str) :
 
