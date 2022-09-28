@@ -1,6 +1,6 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
-from numpy import pi, cos, sin, arccos, arcsin, sqrt, power, arange
+from numpy import pi, cos, sin, arccos, arcsin, sqrt, power
 
 def polar2cartesian(r,phi,theta):
     x = r * sin(theta) * cos(phi)
@@ -369,7 +369,20 @@ def show_poses(
     distances = np.linalg.norm(t_vectors,axis=1)
     print(f'distance from origin -> min: {np.min(distances)}, max: {np.max(distances)}')
 
-    poses = np.array(poses)
+    n_poses = len(poses)
+    n_unique_poses = len(np.unique(poses,axis=0))
+    print(f'unique {pose_key}_key poses : {n_unique_poses}, which is {n_unique_poses/n_poses*100}% of all poses' )
+
+    # d = {}
+    # for id,p1 in enumerate(poses) : 
+    #     s = 0
+    #     for p2 in poses : 
+    #         s += int(np.allclose(p1,p2,atol=1.e-3))
+    #     d[id]=s
+
+    # for k,v in d.items() : 
+    #     if v !=4 : print(k)
+
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
@@ -383,7 +396,6 @@ def show_poses(
     plt.xlabel('x')
     plt.ylabel('y')
 
-    
     if errors is not None : 
         cbar = fig.colorbar(p)
         cbar.set_label('error')
@@ -391,4 +403,5 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_400Cam_4sameLight_noisy/uf','pose')
+#show_poses('/home/eyecan/dev/real_relight/data/datasets/train/test/uf','gtlight')
+

@@ -642,10 +642,14 @@ def camera_and_repeated_lights_on_dome(poi: ndarray, num_poses : int, num_repeat
     xyz_l = points_on_dome(smaller_dome_radius+delta_domes, math.ceil(num_poses / num_repeated_lights) * 2)
     xyz_l = xyz_l + poi  
 
+    unique_lights = math.ceil(num_poses / num_repeated_lights)
+
     c_idxs = np.arange(0,num_poses)
-    l_idxs = np.arange(0,math.ceil(num_poses / num_repeated_lights))
+    l_idxs = np.arange(0,unique_lights)
     l_idxs = np.repeat(l_idxs,num_repeated_lights)[:num_poses]
 
+    errors = np.round(perc_error_dome * smaller_dome_radius * np.random.uniform(-1.0,1.0,unique_lights),4)
+   
     np.random.shuffle(c_idxs)  
     np.random.shuffle(l_idxs)
 
@@ -661,7 +665,7 @@ def camera_and_repeated_lights_on_dome(poi: ndarray, num_poses : int, num_repeat
         light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
         light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
         
-        t_vec = np.array([0.0, 0.0, np.round(perc_error_dome * smaller_dome_radius * np.random.uniform(-1.0,1.0),4)])
+        t_vec = np.array([0.0, 0.0, errors[l_id]])
         t_matrix[:3,3] = t_vec
         light2world_z_trans = light2world @ t_matrix
         
