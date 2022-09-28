@@ -625,7 +625,7 @@ def camera_on_dome_light_on_noisy_dome(poi: ndarray, num_poses : int, camera_dom
     return camera_poses, light_poses
 
 
-def main(config_file : str, dataset_id : str, poi_name : str) :
+def main(config_file: str, dataset_id: str, poi_name: str, hide_obj: str) :
 
     cfg_file = os.path.join(DATASET_PATH, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
@@ -680,7 +680,7 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
 
     bproc.utility.reset_keyframes()   # Clear all key frames from the previous run
 
-    #bpy.data.objects['CharucoBase'].hide_render = True 
+    if hide_obj is not None : bpy.data.objects[hide_obj].hide_render = True #hide object from rendering 
 
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
@@ -747,7 +747,8 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     parser.add_argument('--poi', dest='poi', type=str, help='obj name for the poi', required=False)
-    
+    parser.add_argument('--hide', dest='hide_obj', type=str, help='obj to hide from rendering', required=False)
+
     args = parser.parse_args()
     
     main(args.config_file,args.dataset_id,args.poi)
