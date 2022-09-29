@@ -680,7 +680,7 @@ def camera_and_repeated_lights_on_dome(poi: ndarray, num_poses : int, num_repeat
     return camera_poses, light_poses
 
 
-def main(config_file : str, dataset_id : str, poi_name : str) :
+def main(config_file : str, dataset_id : str, poi_name : str, hide_obj: str) :
 
     cfg_file = os.path.join(DATASET_PATH, config_file+'.yml')
     assert os.path.exists(cfg_file), 'config yaml file not found'
@@ -715,6 +715,9 @@ def main(config_file : str, dataset_id : str, poi_name : str) :
     light = bproc.types.Light(type=cfg.light.type, name = 'light')
     light.set_energy(cfg.light.energy)
     light.blender_obj.data.shadow_soft_size = cfg.light.radius
+
+
+    if hide_obj is not None : bpy.data.objects[hide_obj].hide_render = True #hide object from rendering
 
     for i in range(cfg.images.num):
         frame = bpy.context.scene.frame_end
@@ -782,10 +785,11 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', dest='config_file', type=str, help='yml config file', required=True)
     parser.add_argument('--id', dest='dataset_id', type=str, help='id for the dataset', required=True)
     parser.add_argument('--poi', dest='poi', type=str, help='obj name for the poi', required=False)
+    parser.add_argument('--hide', dest='hide_obj', type=str, help='obj to hide from rendering', required=False)
     
     args = parser.parse_args()
     
-    main(args.config_file,args.dataset_id,args.poi)
+    main(args.config_file,args.dataset_id,args.poi,args.hide_obj)
 
     #main('gen_config','pepper_light')
   
