@@ -1,0 +1,63 @@
+params:
+    sources:
+        - name: dataset
+          path: /home/eyecan/dev/real_relight/data/datasets/train/prove/prova0/images
+        - name: calibration
+          path: /home/eyecan/dev/real_relight/data/datasets/train/prove/prova0/calibration
+    output: /home/eyecan/dev/real_relight/data/datasets/train/prove/prova0/uf
+    convert:
+        fps: 1
+    add_boards:
+        charuco0:
+            board_type: charuco
+            grid_size: [3, 3]
+            square_size_meter: 0.03
+            marker_size_meter: 0.023
+            dictionary:
+                n_markers: 20
+                marker_res: 5
+                offset: 0
+        charuco1:
+            board_type: charuco
+            grid_size: [3, 3]
+            square_size_meter: 0.03
+            marker_size_meter: 0.023
+            dictionary:
+                n_markers: 20
+                marker_res: 5
+                offset: 5
+        charuco2:
+            board_type: charuco
+            grid_size: [3, 3]
+            square_size_meter: 0.03
+            marker_size_meter: 0.023
+            dictionary:
+                n_markers: 20
+                marker_res: 5
+                offset: 10
+        charuco3:
+            board_type: charuco
+            grid_size: [3, 3]
+            square_size_meter: 0.03
+            marker_size_meter: 0.023
+            dictionary:
+                n_markers: 20
+                marker_res: 5
+                offset: 15
+    calibrate:
+        board_key: charuco0
+    detect:
+        debug: true
+    compute_poses:
+        refiner:
+            refiner_type: bundle_adjustment
+            target_board: 0
+            on_manifold: false
+            device: cpu
+            lr: 1E-3
+            num_steps: 10000
+            plateau: null
+            time_budget: null
+            patience: 100
+            debug: true
+            verbose: 50

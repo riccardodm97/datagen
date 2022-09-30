@@ -1,0 +1,20 @@
+params:
+    sources:
+        - name: calibration
+          path: /home/eyecan/dev/real_relight/data/datasets/train/prove/prova0/calibration
+    output: /home/eyecan/dev/real_relight/data/datasets/train/prove/prova0/from_uf
+    convert:
+        fps: 1
+    add_boards:
+        base_board:
+            board_type: charuco
+            grid_size: [12, 18]
+            square_size_meter: 0.015
+            marker_size_meter: 0.011
+            dictionary:
+                n_markers: 110
+                marker_res: 5
+                offset: 0
+        n_boards: 1
+    calibrate:
+        board_key: base_board

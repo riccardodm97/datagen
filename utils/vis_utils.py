@@ -403,5 +403,5 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-#show_poses('/home/eyecan/dev/real_relight/data/datasets/train/test/uf','gtlight')
+#show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_400Cam_16sameLight_noisy/from_uf','light')
 

@@ -1,0 +1,31 @@
+nodes:
+    $for(params.sources, source):
+        convert_$item(source.name):
+            shell:
+                command: custom_charuco to-underfolder {input} --dest {output} --fps {fps}
+                inputs:
+                    input: $item(source.path)
+                    fps: $var(params.convert.fps, default=1)
+                outputs:
+                    output: $tmp()/images/$item(source.name)
+
+        add_board_$item(source.name):
+            pipe:
+                operations:
+                    map:
+                        stage:
+                            add_charuco_boards:
+                                base_board: $var(params.add_boards.base_board)
+                                n_boards: $var(params.add_boards.n_boards)
+                input: $tmp()/images/$item(source.name)
+                output: $tmp()/with_boards/$item(source.name)
+
+    calibrate:
+        pipe:
+            input: $tmp()/with_boards/calibration
+            output: $var(params.output)
+            operations:
+                - calibrate:
+                      board_key: $var(params.calibrate.board_key)
+
+

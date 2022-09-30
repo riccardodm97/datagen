@@ -62,3 +62,20 @@ def rotate_x_axis(pose: np.ndarray) -> np.ndarray:
 #     new_pose[:3, :3] = r
 #     new_pose[:3, 3] = t
 #     return new_pose
+
+
+# def generate_charuco_board():
+#     import cv2 
+#     from cv2 import aruco 
+
+#     n_markers = 18
+#     marker_res = 5
+#     grid_size = [6,6]
+#     square_size_meters = 0.03
+#     marker_size_meters = 0.018
+
+#     dictionary = aruco.Dictionary_create(n_markers, marker_res)
+#     board = aruco.CharucoBoard_create(grid_size[1], grid_size[0], square_size_meters, marker_size_meters, dictionary)
+
+#     input_image = cv2.cvtColor(board.draw((500, 500)), cv2.COLOR_GRAY2BGR)
+#     cv2.imwrite("/home/eyecan/dev/real_relight/data/datasets/train/prove/prova0/calibration/board.jpg", cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB))
