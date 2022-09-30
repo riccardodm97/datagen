@@ -135,45 +135,46 @@ def calibrate(config_file : str, debug : bool):
         flags=0,
     )
 
-    for idx,img_name in enumerate(images) : 
+    if debug : 
+        for idx,img_name in enumerate(images) : 
 
-        img = cv2.imread(str(data_path / img_name))
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        corners, ids, rejected = aruco.detectMarkers(img_gray, aruco_dict)
+            img = cv2.imread(str(data_path / img_name))
+            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            corners, ids, rejected = aruco.detectMarkers(img_gray, aruco_dict)
 
-        if debug : 
-            img = aruco.drawDetectedMarkers(image=img, corners=corners, ids= ids)
+            if debug : 
+                img = aruco.drawDetectedMarkers(image=img, corners=corners, ids= ids)
+                cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+                cv2.imshow('Image', img)
+                cv2.waitKey(0)
+                
+
+            corners, ids, _, _ = aruco.refineDetectedMarkers(
+                img_gray,
+                board,
+                corners,
+                ids,
+                rejected,
+                cameraMatrix=None,
+                distCoeffs=None,
+            )
+
+            n, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(
+                corners,
+                ids,
+                img_gray,
+                board,
+                minMarkers=1,
+                cameraMatrix=None,
+                distCoeffs=None,
+            )
+            
+            ret, rvec, tvec = aruco.estimatePoseCharucoBoard(charuco_corners,charuco_ids, board, calibration[1], 
+                calibration[2], calibration[3][idx], calibration[4][idx], useExtrinsicGuess = False)
+            img = cv2.drawFrameAxes(img, calibration[1], calibration[2], rvec, tvec, length=0.1)
             cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
             cv2.imshow('Image', img)
             cv2.waitKey(0)
-            
-
-        corners, ids, _, _ = aruco.refineDetectedMarkers(
-            img_gray,
-            board,
-            corners,
-            ids,
-            rejected,
-            cameraMatrix=None,
-            distCoeffs=None,
-        )
-
-        n, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(
-            corners,
-            ids,
-            img_gray,
-            board,
-            minMarkers=1,
-            cameraMatrix=None,
-            distCoeffs=None,
-        )
-        
-        ret, rvec, tvec = aruco.estimatePoseCharucoBoard(charuco_corners,charuco_ids, board, calibration[1], 
-            calibration[2], calibration[3][idx], calibration[4][idx], useExtrinsicGuess = False)
-        img = cv2.drawFrameAxes(img, calibration[1], calibration[2], rvec, tvec, length=0.1)
-        cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
-        cv2.imshow('Image', img)
-        cv2.waitKey(0)
 
 
     camera_metadata = {
@@ -188,8 +189,7 @@ def calibrate(config_file : str, debug : bool):
         },
     }
 
-    print(len(calibration))
-
+    print(calibration[1])
     print(np.mean(calibration[-1]))
 
     with open(data_path/ 'camera.yml', "w") as f : 
