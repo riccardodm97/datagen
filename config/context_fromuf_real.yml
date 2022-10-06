@@ -5,7 +5,7 @@ compute_poses:
     refiner:
         refiner_type: bundle_adjustment
 
-        target_board: 0
+        target_board: 1
         on_manifold: true
         device: cpu
         lr: 1E-3

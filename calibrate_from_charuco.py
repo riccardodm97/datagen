@@ -1,6 +1,5 @@
 import os 
 from os import listdir
-from statistics import mean
 
 import yaml
 from pathlib import Path
@@ -13,17 +12,17 @@ from dotmap import DotMap
 
 def load_images(path: str) -> list:
     
-    img_files = [f for f in listdir(path) if f.endswith(".jpg")]
+    img_files = [f for f in listdir(path) if f.endswith(".JPG")]
     for file in img_files:
         file = path / file
         file.rename(file.parent / (file.stem.zfill(5) + file.suffix))
 
-    files = [f for f in listdir(path) if f.endswith(".jpg")]
+    files = [f for f in listdir(path) if f.endswith(".JPG")]
     files = sorted(files)
 
     return files
 
-def calibrate(config_file : str, debug : bool):
+def calibrate(config_file : str, metadata_key : str, debug : bool):
 
     assert os.path.exists(config_file), 'config yaml file not found'
 
@@ -189,10 +188,9 @@ def calibrate(config_file : str, debug : bool):
         },
     }
 
-    print(calibration[1])
     print(np.mean(calibration[-1]))
 
-    with open(data_path/ 'camera.yml', "w") as f : 
+    with open(data_path/ f'{metadata_key}.yml', "w") as f : 
         yaml.dump(camera_metadata, f)
 
 
@@ -201,11 +199,12 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', dest='config_file', type=str, help='path to yml config file', required=True)
+    parser.add_argument('--key', dest='metadata_key', type=str, help='name of the generated metadata file', default='camera')
     parser.add_argument('--debug', dest='debug', help='debug mode', action='store_true')
 
     args = parser.parse_args()
     
-    calibrate(args.config_file,args.debug)
+    calibrate(args.config_file,args.metadata_key,args.debug)
 
 
 
