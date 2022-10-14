@@ -1,23 +1,23 @@
-import os 
-from os import listdir
-
-import yaml
-from pathlib import Path
-import cv2
-from cv2 import aruco 
-import numpy as np 
 import argparse
+import os
+from os import listdir
+from pathlib import Path
+
+import cv2
+import numpy as np
+import yaml
+from cv2 import aruco
 from dotmap import DotMap
 
 
 def load_images(path: str) -> list:
     
-    img_files = [f for f in listdir(path) if f.endswith(".JPG")]
+    img_files = [f for f in listdir(path) if f.endswith(".jpg")]
     for file in img_files:
         file = path / file
         file.rename(file.parent / (file.stem.zfill(5) + file.suffix))
 
-    files = [f for f in listdir(path) if f.endswith(".JPG")]
+    files = [f for f in listdir(path) if f.endswith(".jpg")]
     files = sorted(files)
 
     return files

@@ -1,6 +1,54 @@
-import numpy as np 
-import matplotlib.pyplot as plt 
-from numpy import pi, cos, sin, arccos, arcsin, sqrt, power
+import cv2
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from numpy import arccos, arcsin, cos, pi, power, sin, sqrt
+from pipelime.sequences.readers.filesystem import UnderfolderReader
+from sklearn.metrics import pairwise_distances
+from tqdm import tqdm
+
+
+def variance_of_laplacian(image):
+    """Compute the variance of the Laplacian of the given image.
+
+    :param image: input image
+    :type image: _type_
+    :return: variance of laplacian
+    :rtype: _type_
+    """
+    return cv2.Laplacian(image, cv2.CV_64F).var()
+
+
+def sharpness(image):
+    """Compute the sharpness of the given image.
+
+    :param image: input image
+    :type image: _type_
+    :return: sharpness
+    :rtype: _type_
+    """
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    fm = variance_of_laplacian(gray)
+    return fm
+
+
+def rotate_x_axis(pose: np.ndarray) -> np.ndarray:
+    """Rotate a pose of 180 degrees around the x-axis
+
+    :param pose: input pose
+    :type pose: np.ndarray
+    :return: output pose
+    :rtype: np.ndarray
+    """
+
+    # Rotation of 180 degrees along x axis
+    rx = np.eye(4).astype(np.float32)
+    rx[1, 1] = rx[2, 2] = -1
+    pose = np.dot(pose, rx)
+    return pose
+
+
 
 def polar2cartesian(r,phi,theta):
     x = r * sin(theta) * cos(phi)
@@ -312,6 +360,7 @@ def camera_dome_light_ring():
 from pathlib import Path
 from typing import Optional, Sequence
 
+
 def show_poses(
     input_folder: Path,
     pose_key: str,
@@ -319,11 +368,7 @@ def show_poses(
     scale: Optional[float] = None,
     labels: bool = False
 ) -> None:
-    import matplotlib
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from pipelime.sequences.readers.filesystem import UnderfolderReader
-    from sklearn.metrics import pairwise_distances
+
 
     matplotlib.use("TkAgg")
 
@@ -373,6 +418,29 @@ def show_poses(
     n_unique_poses = len(np.unique(poses,axis=0))
     print(f'unique {pose_key}_key poses : {n_unique_poses}, which is {n_unique_poses/n_poses*100}% of all poses' )
 
+    xs = [p[0,3] for p in poses]
+    ys = [p[1,3] for p in poses]
+    zs = [p[2,3] for p in poses]
+
+    print(f'Tx -> min: {np.min(xs)} max: {np.max(xs)}')
+    print(f'Ty -> min: {np.min(ys)} max: {np.max(ys)}')
+    print(f'Tz -> min: {np.min(zs)} max: {np.max(zs)}')
+
+    #poses[:,2,3] = 0.44
+
+
+    # tmp = [p[1,3] for p in poses]
+    # print(np.argmin(tmp))
+    # print(tmp)
+
+    # print(poses[27])
+    # # print(len(poses))
+    # poses = np.delete(poses,25,axis=0)
+    # tmp = [p[1,3] for p in poses]
+    # print(np.argmin(tmp))
+    # print(tmp)
+    # # print(poses.shape)
+
     # d = {}
     # for id,p1 in enumerate(poses) : 
     #     s = 0
@@ -393,6 +461,7 @@ def show_poses(
     cmhot = plt.get_cmap("hot")
 
     p = ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c=colors,cmap=cmhot)
+
     plt.xlabel('x')
     plt.ylabel('y')
 
@@ -403,5 +472,73 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-#show_poses('/home/eyecan/dev/real_relight/data/datasets/train/threeCubes_400Cam_16sameLight_noisy/from_uf','light')
+show_poses('/home/eyecan/dev/real_relight/data/datasets/test/cubesOnShelf_multiLight/light180/uf','pose')
+
+
+def project_cube(input_folder: Path, pose_key: str, image_key: str):
+
+    uf = UnderfolderReader(input_folder)
+
+    camera = uf[0]['camera']
+    camera_matrix = np.array(camera["intrinsics"]["camera_matrix"])
+    dist_coeffs = np.array(camera["intrinsics"]["dist_coeffs"])
+
+    print(camera_matrix)
+       
+    for sample in tqdm(uf):
+
+        image_file_path = sample.filesmap[image_key]    
+        pose = np.array(sample[pose_key], dtype=np.float32)
+
+        img = cv2.imread(str(image_file_path))  # load the image
+
+        red = (0, 0, 255)  # red (in BGR)
+        blue = (255, 0, 0)  # blue (in BGR)
+        green = (0, 255, 0)  # green (in BGR)
+        line_width = 10
+
+        corners_cube_3d = np.array(
+            [  
+                [0.0, 0.0, 0.0],
+                [0, 1, 0],
+                [1, 1, 0],
+                [1, 0, 0],
+                [0, 0, -1],
+                [0, 1, -1],
+                [1, 1, -1],
+                [1, 0, -1],
+            ]
+        )
+        
+        #pose = np.linalg.inv(pose)
+
+        rmatrix = pose[:3,:3]
+        rvec = cv2.Rodrigues(rmatrix)[0]
+        tvec = pose[:3,3]
+
+        cube_corners_2d, _ = cv2.projectPoints(corners_cube_3d, rvec, tvec, camera_matrix, dist_coeffs)
+
+        cube_corners_2d = cube_corners_2d.astype(np.int32)
+        # first draw the base in red
+        cv2.line(img, tuple(cube_corners_2d[0][0]), tuple(cube_corners_2d[1][0]), red, line_width)
+        cv2.line(img, tuple(cube_corners_2d[1][0]), tuple(cube_corners_2d[2][0]), red, line_width)
+        cv2.line(img, tuple(cube_corners_2d[2][0]), tuple(cube_corners_2d[3][0]), red, line_width)
+        cv2.line(img, tuple(cube_corners_2d[3][0]), tuple(cube_corners_2d[0][0]), red, line_width)
+
+        # now draw the pillars
+        cv2.line(img, tuple(cube_corners_2d[0][0]), tuple(cube_corners_2d[4][0]), blue, line_width)
+        cv2.line(img, tuple(cube_corners_2d[1][0]), tuple(cube_corners_2d[5][0]), blue, line_width)
+        cv2.line(img, tuple(cube_corners_2d[2][0]), tuple(cube_corners_2d[6][0]), blue, line_width)
+        cv2.line(img, tuple(cube_corners_2d[3][0]), tuple(cube_corners_2d[7][0]), blue, line_width)
+
+        # finally draw the top
+        cv2.line(img, tuple(cube_corners_2d[4][0]), tuple(cube_corners_2d[5][0]), green, line_width)
+        cv2.line(img, tuple(cube_corners_2d[5][0]), tuple(cube_corners_2d[6][0]), green, line_width)
+        cv2.line(img, tuple(cube_corners_2d[6][0]), tuple(cube_corners_2d[7][0]), green, line_width)
+        cv2.line(img, tuple(cube_corners_2d[7][0]), tuple(cube_corners_2d[4][0]), green, line_width)
+
+        cv2.imshow('image',img[..., ::-1])
+        cv2.waitKey(0)
+        #plt.imshow(img[..., ::-1])
+        #plt.show()
 

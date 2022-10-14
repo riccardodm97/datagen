@@ -1,17 +1,17 @@
-import os 
 import argparse
-import yaml
-from dotmap import DotMap
-from pathlib import Path
-from os import listdir
-from os.path import isfile
-import h5py 
-import numpy as np
+import os
 import pickle
 import shutil
+from os import listdir
+from os.path import isfile
+from pathlib import Path
 
-from pipelime.sequences.writers.filesystem import UnderfolderWriter
+import h5py
+import numpy as np
+import yaml
+from dotmap import DotMap
 from pipelime.sequences.samples import PlainSample, SamplesSequence
+from pipelime.sequences.writers.filesystem import UnderfolderWriter
 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
 TASK = 'real_relight' 

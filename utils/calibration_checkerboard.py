@@ -1,12 +1,12 @@
+import argparse
+from os import listdir
 from pathlib import Path
 from typing import Optional, Tuple
-from os import listdir
-import argparse
-
 
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+
 
 def load_images(path: str) -> list:
     

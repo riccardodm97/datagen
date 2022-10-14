@@ -1,14 +1,16 @@
-import click
-from utils.utils import rotate_x_axis
 import math
+import os
+from pathlib import Path
+
+import click
 import cv2
 import numpy as np
-from pathlib import Path
-import os
 from choixe.configurations import XConfig
-from rich.progress import track
-from pipelime.sequences.readers.filesystem import UnderfolderReader
 from pipelime.sequences.operations import OperationShuffle, OperationSplits
+from pipelime.sequences.readers.filesystem import UnderfolderReader
+from rich.progress import track
+
+from utils.utils import rotate_x_axis
 
 
 def convert2nerf(uf, extension, output_folder, camera_key, image_key, pose_key, resize):
