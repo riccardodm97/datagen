@@ -1,12 +1,11 @@
-import json
 import argparse
-import numpy as np
-import imageio.v2 as imageio
+import json
 from pathlib import Path
 
-from pipelime.sequences.writers.filesystem import UnderfolderWriter
+import imageio.v2 as imageio
+import numpy as np
 from pipelime.sequences.samples import PlainSample, SamplesSequence
-
+from pipelime.sequences.writers.filesystem import UnderfolderWriter
 
 TASK = 'real_relight' 
 BASE_PATH = Path('~/dev').expanduser()      

@@ -9,16 +9,16 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import argparse
-import os
-from pathlib import Path, PurePosixPath
-
-import numpy as np
 import json
-import sys
 import math
-import cv2
 import os
 import shutil
+import sys
+from pathlib import Path, PurePosixPath
+
+import cv2
+import numpy as np
+
 
 def parse_args():
 	parser = argparse.ArgumentParser(description="convert a text colmap export to nerf format transforms.json; optionally convert video to images, and optionally run colmap in the first place")

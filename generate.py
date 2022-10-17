@@ -1,19 +1,19 @@
 import blenderproc as bproc
-import os 
-import pickle
+
 import argparse
-from pathlib import Path
-import yaml
-from typing import Tuple 
-import shutil
-
 import math
-import numpy as np
-from numpy import ndarray
-from dotmap import DotMap
-from transforms3d import affines, euler
-import bpy
+import os
+import pickle
+import shutil
+from pathlib import Path
+from typing import Tuple
 
+import bpy
+import numpy as np
+import yaml
+from dotmap import DotMap
+from numpy import ndarray
+from transforms3d import affines, euler
 
 BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
 TASK = 'relight' 
@@ -388,7 +388,7 @@ def camera_light_on_two_domes_uniformly(poi: ndarray, num_poses : int, delta_dom
 
     c_idxs = np.arange(0,num_poses)
     l_idxs = c_idxs.copy()
-    np.random.shuffle(c_idxs)   #DEBUG 
+    np.random.shuffle(c_idxs)   
     np.random.shuffle(l_idxs)
 
     camera_poses = []
@@ -624,7 +624,45 @@ def camera_on_dome_light_on_noisy_dome(poi: ndarray, num_poses : int, camera_dom
 
     return camera_poses, light_poses
 
-def camera_and_repeated_lights_on_dome(poi: ndarray, num_poses : int, num_repeated_lights : int, smaller_dome_radius: float, delta_domes : float, perc_error_dome : float):
+def camera_and_repeated_lights_on_dome(poi: ndarray, num_poses : int, num_repeated_lights : int, smaller_dome_radius: float, delta_domes : float):
+    '''
+    generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
+    the point of interest. Delta domes is the positive difference between the bigger dome radius and the smaller one. 
+    Camera and light poses are then randomly coupled to obtain a pair camera-light, but the number of different light poses is [num_poses/num_repeated_lights],
+    which is only a fraction of the different camera poses. In this way [num_repeated_lights] different camera points will be paired with the same light point. 
+    '''
+
+    # poi = point of intereset in the scene (the camera always face the poi)
+
+    unique_lights = math.ceil(num_poses / num_repeated_lights)
+
+    xyz_c = points_on_dome(smaller_dome_radius, num_poses*2)  #double it because we only take the z positive (above poi )
+    xyz_c = xyz_c + poi 
+
+    xyz_l = points_on_dome(smaller_dome_radius+delta_domes, unique_lights*2)
+    xyz_l = xyz_l + poi  
+
+    c_idxs = np.arange(0,num_poses)
+    l_idxs = np.arange(0,unique_lights)
+    l_idxs = np.repeat(l_idxs,num_repeated_lights)[:num_poses]
+   
+    np.random.shuffle(c_idxs)  
+    np.random.shuffle(l_idxs)
+    
+    camera_poses = []
+    light_poses = []
+    for c_id,l_id in zip(c_idxs,l_idxs):
+        cam_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_c[c_id])
+        cam2world  = bproc.math.build_transformation_mat(xyz_c[c_id], cam_rotation_matrix)
+        camera_poses.append(cam2world)
+
+        light_rotation_matrix = bproc.camera.rotation_from_forward_vec(poi - xyz_l[l_id])
+        light2world  = bproc.math.build_transformation_mat(xyz_l[l_id], light_rotation_matrix)
+        light_poses.append(light2world)
+
+    return camera_poses, light_poses
+
+def camera_and_repeated_lights_on_noisy_dome(poi: ndarray, num_poses : int, num_repeated_lights : int, smaller_dome_radius: float, delta_domes : float, perc_error_dome : float):
     '''
     generate poses for the camera and the light on two domes where the bigger one (light dome) encloses the smaller one. Both are centered on 
     the point of interest. Delta domes is the positive difference between the bigger dome radius and the smaller one. 
