@@ -472,7 +472,7 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('/home/eyecan/dev/real_relight/data/datasets/test/cubesOnShelf_multiLight/light180/uf','pose')
+#show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes400Cam_1sameLight/uf','light')
 
 
 def project_cube(input_folder: Path, pose_key: str, image_key: str):
