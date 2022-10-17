@@ -1,6 +1,11 @@
-import numpy as np 
-import matplotlib.pyplot as plt 
-from numpy import pi, cos, sin, arccos, arcsin, sqrt, power, arange
+from pathlib import Path
+from typing import Optional, Sequence
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from numpy import arccos, arcsin, cos, pi, power, sin, sqrt
+
 
 def polar2cartesian(r,phi,theta):
     x = r * sin(theta) * cos(phi)
@@ -308,22 +313,14 @@ def camera_dome_light_ring():
 # camera_dome_light_ring()
 
 
-
-from pathlib import Path
-from typing import Optional, Sequence
-
 def show_poses(
     input_folder: Path,
     pose_key: str,
-    colors : np.ndarray = None,
+    errors : np.ndarray = None,
     scale: Optional[float] = None,
     labels: bool = False
 ) -> None:
-    import matplotlib
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from pipelime.sequences.readers.filesystem import UnderfolderReader
-    from sklearn.metrics import pairwise_distances
+
 
     matplotlib.use("TkAgg")
 
@@ -367,28 +364,64 @@ def show_poses(
     poses = np.array(poses)
     t_vectors = poses[:,:3,3] 
     distances = np.linalg.norm(t_vectors,axis=1)
-    print(f'min distance: {np.min(distances)}, max distance: {np.max(distances)}')
+    print(f'distance from origin -> min: {np.min(distances)}, max: {np.max(distances)}')
 
     n_poses = len(poses)
     n_unique_poses = len(np.unique(poses,axis=0))
-    
-
     print(f'unique {pose_key}_key poses : {n_unique_poses}, which is {n_unique_poses/n_poses*100}% of all poses' )
-    
+
+    xs = [p[0,3] for p in poses]
+    ys = [p[1,3] for p in poses]
+    zs = [p[2,3] for p in poses]
+
+    print(f'Tx -> min: {np.min(xs)} max: {np.max(xs)}')
+    print(f'Ty -> min: {np.min(ys)} max: {np.max(ys)}')
+    print(f'Tz -> min: {np.min(zs)} max: {np.max(zs)}')
+
+    #poses[:,2,3] = 0.44
+
+
+    # tmp = [p[1,3] for p in poses]
+    # print(np.argmin(tmp))
+    # print(tmp)
+
+    # print(poses[27])
+    # # print(len(poses))
+    # poses = np.delete(poses,25,axis=0)
+    # tmp = [p[1,3] for p in poses]
+    # print(np.argmin(tmp))
+    # print(tmp)
+    # # print(poses.shape)
+
+    # d = {}
+    # for id,p1 in enumerate(poses) : 
+    #     s = 0
+    #     for p2 in poses : 
+    #         s += int(np.allclose(p1,p2,atol=1.e-3))
+    #     d[id]=s
+
+    # for k,v in d.items() : 
+    #     if v !=4 : print(k)
+
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
-    if colors is None : 
+    if errors is None : 
         colors = np.ones(poses.shape[0])
+    else : 
+        colors = errors 
     cmhot = plt.get_cmap("hot")
 
     p = ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c=colors,cmap=cmhot)
+
     plt.xlabel('x')
     plt.ylabel('y')
 
-    fig.colorbar(p)
+    if errors is not None : 
+        cbar = fig.colorbar(p)
+        cbar.set_label('error')
 
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-#show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes_4sameLight/uf','pose')
+show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes400Cam_1sameLight/uf','light')
