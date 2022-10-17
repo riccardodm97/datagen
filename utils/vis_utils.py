@@ -1,10 +1,14 @@
 from pathlib import Path
 from typing import Optional, Sequence
 
+import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import arccos, arcsin, cos, pi, power, sin, sqrt
+from pipelime.sequences.readers.filesystem import UnderfolderReader
+from sklearn.metrics import pairwise_distances
+from tqdm import tqdm
 
 
 def polar2cartesian(r,phi,theta):
@@ -424,4 +428,4 @@ def show_poses(
     plt.show()
     #plot_poses(poses, scale=scale, labels=labels)
 
-show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes400Cam_1sameLight/uf','light')
+show_poses('/home/eyecan/dev/relight/data/datasets/train/threeCubes400Cam_16sameLight/uf','light')
