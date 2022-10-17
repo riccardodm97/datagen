@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Optional, Sequence
+
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
@@ -355,10 +358,6 @@ def camera_dome_light_ring():
 
 # camera_dome_light_ring()
 
-
-
-from pathlib import Path
-from typing import Optional, Sequence
 
 
 def show_poses(
