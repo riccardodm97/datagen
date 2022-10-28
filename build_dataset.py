@@ -2,6 +2,7 @@ import math
 from pathlib import Path
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import typer as t
 from pipelime.sequences.operations import OperationResetIndices
@@ -100,20 +101,24 @@ def generate_dataset_test_light360(
 ): 
 
     uf = UnderfolderReader(input_folder)
-    poses = []
+    camera_poses = []
+    light_poses = []
     for sample in uf:
-        pose: np.ndarray = sample['pose']
-        if pose[3, 3] == 1:
-            poses.append(pose)
+        c_pose : np.ndarray = sample['pose']
+        l_pose : np.ndarray = sample['light']
+        if c_pose[3, 3]== 1 and l_pose[3,3]== 1:
+            camera_poses.append(c_pose)
+            light_poses.append(l_pose)
 
-    poses = np.array(poses)
+    camera_poses = np.array(camera_poses)
+    light_poses = np.array(light_poses)
 
-    t_vectors = poses[:,:3,3]
-    z_vectors = poses[:,:3,2]
+    light_t_vectors = light_poses[:,:3,3]
+    light_z_vectors = light_poses[:,:3,2]
 
-    light_dome_center = nearest_intersection(t_vectors,z_vectors)
+    light_dome_center = nearest_intersection(light_t_vectors,light_z_vectors)
     light_dome_center = light_dome_center.squeeze(1)
-    light_dome_radius =  np.linalg.norm(t_vectors[0] - light_dome_center)
+    light_dome_radius =  np.linalg.norm(light_t_vectors[0] - light_dome_center)
 
     theta = np.radians(zenit)
     circle_center = light_dome_center.copy()
@@ -121,12 +126,14 @@ def generate_dataset_test_light360(
     circle_radius = light_dome_radius * np.sin(theta)
     xyz_l = n_points_on_circle(circle_radius,circle_center,num_poses)
 
-    light_poses = []
+    test_light_poses = []
 
     for l in xyz_l : 
 
         light2world = makeLookAt(l,light_dome_center,[0,0,1])
-        light_poses.append(light2world)
+        test_light_poses.append(light2world)
+    
+    test_light_poses = np.array(test_light_poses)
     
     writer = UnderfolderWriter(
         folder = output_folder,
@@ -134,10 +141,8 @@ def generate_dataset_test_light360(
         extensions_map=EXTENSIONS,
     )
 
-    if camera_id is None : camera_id = np.random.randint(low=0, high=len(poses))
+    if camera_id is None : camera_id = np.random.randint(low=0, high=len(camera_poses))
     
-    camera_poses = poses #np.repeat(poses[camera_id,None,:], num_poses, axis=0)
-    light_poses = np.array(light_poses)
     camera_metadata = uf[0][CAMERA_KEY]
 
     samples = []
@@ -146,41 +151,13 @@ def generate_dataset_test_light360(
         data = {
             CAMERA_KEY: camera_metadata,
             POSE_KEY: camera_poses[camera_id], 
-            LIGHT_KEY: light_poses[idx]
+            LIGHT_KEY: test_light_poses[idx]
         }
         sample = PlainSample(data=data, id=idx)
         samples.append(sample)
 
     writer(SamplesSequence(samples))
-
-    # fig = plt.figure(figsize=(10,10))
-    # ax = fig.add_subplot(111, projection='3d')
-
-    # #ax.quiver(*light_dome_center,*t_vectors[0])
-    # x_values = [light_dome_center[0], t_vectors[0][0]]
-    # y_values = [light_dome_center[1], t_vectors[0][1]]
-    # z_values = [light_dome_center[2], t_vectors[0][2]]
-    # ax.plot(x_values, y_values, z_values, 'bo', linestyle="--")
-
-    
-    # ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='red')
-    # ax.scatter(*circle_center, c='black')
-
-    # ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c ='green')
-
-    # ax.set_xlabel('x')
-    # ax.set_ylabel('y')
-    # ax.set_zlabel('z')
-
-    # ax.set_xlim([-0.3, 0.3])
-    # ax.set_ylim([-0.3, 0.3])
-    # ax.set_zlim([0.1, 0.6])
-    
-    #plot_poses(np.array(light_poses))
-    #plt.show()
-
-# prova(35,'/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/prova_marco/uf3',100)
-
+ 
 
 if __name__=="__main__":
     FUNC()
