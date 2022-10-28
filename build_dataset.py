@@ -159,5 +159,75 @@ def generate_dataset_test_light360(
     writer(SamplesSequence(samples))
  
 
+    
+
+def generate_dataset_test_movingCamera( 
+    input_folder: Path = t.Option(..., help="Specify the input underfolder path"),
+    output_folder : Path = t.Option(..., help="Specify the output underfolder path"),
+    zenit : int = t.Option(..., help="zenit of the cirle of lights on the dome"),
+    num_poses : int = t.Option(..., help="num poses to generate"),
+    light_id : int = t.Option(None, help="light position from train poses")
+): 
+
+    uf = UnderfolderReader(input_folder)
+    camera_poses = []
+    light_poses = []
+    for sample in uf:
+        c_pose : np.ndarray = sample['pose']
+        l_pose : np.ndarray = sample['light']
+        if c_pose[3, 3]== 1 and l_pose[3,3]== 1:
+            camera_poses.append(c_pose)
+            light_poses.append(l_pose)
+
+    camera_poses = np.array(camera_poses)
+    light_poses = np.array(light_poses)
+
+    light_t_vectors = light_poses[:,:3,3]
+    light_z_vectors = light_poses[:,:3,2]
+
+    light_dome_center = nearest_intersection(light_t_vectors,light_z_vectors)
+    light_dome_center = light_dome_center.squeeze(1)
+    light_dome_radius =  np.linalg.norm(light_t_vectors[0] - light_dome_center)
+
+    theta = np.radians(zenit)
+    circle_center = light_dome_center.copy()
+    circle_center[2]+= light_dome_radius * np.cos(theta)            
+    circle_radius = light_dome_radius * np.sin(theta)
+    xyz_l = n_points_on_circle(circle_radius,circle_center,num_poses)
+
+    test_light_poses = []
+
+    for l in xyz_l : 
+
+        light2world = makeLookAt(l,light_dome_center,[0,0,1])
+        test_light_poses.append(light2world)
+    
+    test_light_poses = np.array(test_light_poses)
+    
+    writer = UnderfolderWriter(
+        folder = output_folder,
+        root_files_keys=[CAMERA_KEY],
+        extensions_map=EXTENSIONS,
+    )
+
+    if camera_id is None : camera_id = np.random.randint(low=0, high=len(camera_poses))
+    
+    camera_metadata = uf[0][CAMERA_KEY]
+
+    samples = []
+    for idx in range(num_poses):
+
+        data = {
+            CAMERA_KEY: camera_metadata,
+            POSE_KEY: camera_poses[camera_id], 
+            LIGHT_KEY: test_light_poses[idx]
+        }
+        sample = PlainSample(data=data, id=idx)
+        samples.append(sample)
+
+    writer(SamplesSequence(samples))
+ 
+
+
 if __name__=="__main__":
     FUNC()
