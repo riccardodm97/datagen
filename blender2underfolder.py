@@ -13,8 +13,8 @@ from dotmap import DotMap
 from pipelime.sequences.samples import PlainSample, SamplesSequence
 from pipelime.sequences.writers.filesystem import UnderfolderWriter
 
-BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
-TASK = 'relight' 
+BASE_PATH = Path('~/dev/nerf_relight').expanduser()      #TOCHANGE now is specific for this pc 
+TASK = 'synthetic_relight' 
 TASK_PATH = BASE_PATH / TASK
 DATASET_PATH = TASK_PATH / 'data' / 'datasets'
 BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'

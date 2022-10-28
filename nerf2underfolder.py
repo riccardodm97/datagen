@@ -7,8 +7,8 @@ import numpy as np
 from pipelime.sequences.samples import PlainSample, SamplesSequence
 from pipelime.sequences.writers.filesystem import UnderfolderWriter
 
-TASK = 'real_relight' 
-BASE_PATH = Path('~/dev').expanduser()      
+BASE_PATH = Path('~/dev/nerf_relight').expanduser()      
+TASK = 'synthetic_relight' 
 TASK_PATH = BASE_PATH / TASK
 DATASET_PATH = TASK_PATH / 'data' / 'datasets'
 

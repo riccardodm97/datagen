@@ -15,8 +15,8 @@ from dotmap import DotMap
 from numpy import ndarray
 from transforms3d import affines, euler
 
-BASE_PATH = Path('~/dev').expanduser()      #TOCHANGE now is specific for this pc 
-TASK = 'relight' 
+BASE_PATH = Path('~/dev/nerf_relight').expanduser()      #TOCHANGE now is specific for this pc 
+TASK = 'synthetic_relight' 
 TASK_PATH = BASE_PATH / TASK
 SCENE_PATH =  TASK_PATH / 'data' / 'scenes'
 BLENDER_PATH = TASK_PATH / 'data' / 'blender_tmp'
