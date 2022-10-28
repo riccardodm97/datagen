@@ -1,67 +1,15 @@
+
 from pathlib import Path
 from typing import Optional, Sequence
 
-import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import arccos, arcsin, cos, pi, power, sin, sqrt
 from pipelime.sequences.readers.filesystem import UnderfolderReader
 from sklearn.metrics import pairwise_distances
-from tqdm import tqdm
 
-
-def polar2cartesian(r,phi,theta):
-    x = r * sin(theta) * cos(phi)
-    y = r * sin(theta) * sin(phi)
-    z = r * cos(theta)
-
-    return x,y,z
-
-def a(r, u, v, m=1):
-    theta = arccos(power(1 - u, 1 / (1 + m)))
-    phi = 2 * pi * v
-
-    return polar2cartesian(r,phi,theta)
-
-def b(r,u,v):
-    phi = 2 * pi * u
-    theta = arccos(1.0 - v)
-
-    return polar2cartesian(r,phi,theta)
-
-def c(r,u,v):
-    phi = 2 * pi * u
-    theta = arcsin(sqrt(v)) 
-
-    return polar2cartesian(r,phi,theta)
-
-def d(r,u,v):
-
-    phi = 2 * pi * u
-    theta = pi/2 * v 
-
-    return polar2cartesian(r,phi,theta)
-
-def fibonacci_sphere(samples):
-
-    xs,ys,zs = [], [], []
-    phi = pi * (3. - sqrt(5.))  # golden angle in radians
-
-    for i in range(samples):
-        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
-        radius = sqrt(1 - y * y)  # radius at y
-
-        theta = phi * i  # golden angle increment
-
-        x = cos(theta) * radius
-        z = sin(theta) * radius
-
-        xs.append(x)
-        ys.append(y)
-        zs.append(z)
-
-    return xs,ys,zs
+from utils import (n_points_on_circle, n_points_on_vertical_circle,
+                   nearest_intersection, points_circle, points_on_dome)
 
 
 def samples_uniformly_hemisphere():
@@ -84,39 +32,6 @@ def samples_uniformly_hemisphere():
     plt.ylabel('y')
 
     plt.show()
-
-
-def points_on_dome(r, num_points):
-
-    indices = np.arange(0, num_points, dtype=float) + 0.5
-
-    theta = np.arccos(1 - 2*indices/num_points)
-    phi = np.pi * (1 + sqrt(5)) * indices
-
-    x,y,z = polar2cartesian(r,phi,theta)
-
-    xyz = np.stack((x,y,z),axis=-1)
-    xyz = xyz[xyz[:,-1] > 0]  #take only points above poi 
-
-    return xyz
-    
-def n_points_on_circle(r, center, num_points):
-
-    theta = np.linspace(0,2*np.pi,num_points,endpoint=False); 
-    x = r * np.cos(theta)+center[0]
-    y = r * np.sin(theta)+center[1]
-    z = np.broadcast_to(center[2],num_points)
-
-    xyz = np.stack((x,y,z),axis=-1)
-    return xyz
-
-def points_circle(r, center, num_points):
-    return np.array([
-            [center[0] + cos(2 * pi / num_points * x) * r, center[1] + sin(2 * pi / num_points * x) * r, center[2]]
-                for x in range(0, num_points + 1)
-            ])
-
-
 
 
 def poses_uniformly_on_dome_and_circle_light():
@@ -147,7 +62,7 @@ def poses_uniformly_on_dome_and_circle_light():
 
     plt.show()
 
-# poses_uniformly_on_dome_and_circle_light()
+
 
 def camera_light_on_two_domes_uniformly():
 
@@ -226,11 +141,6 @@ def fixed_camera_on_dome_light_circle():
 
     plt.show()
 
-
-# fixed_camera_on_dome_light_circle()
-
-
-
 def light_from_above_camera_circle():
 
 
@@ -272,22 +182,7 @@ def light_from_above_camera_circle():
     plt.show()
 
 
-#light_from_above_camera_circle()
-
-
-def n_points_on_vertical_circle(r, center, num_points):
-
-    theta = np.linspace(0,2*np.pi,num_points,endpoint=False); 
-    x = r * np.cos(theta)+center[0]
-    y = np.broadcast_to(center[1],num_points)
-    z =  r * np.sin(theta)+center[2]
-
-    xyz = np.stack((x,y,z),axis=-1)
-    return xyz
-
-
 def camera_dome_light_ring():
-
 
     radius_c = 1.0
     radius_l = 0.2
@@ -313,26 +208,15 @@ def camera_dome_light_ring():
     plt.ylabel('y')
 
     plt.show()
-
-# camera_dome_light_ring()
-
-
-def show_poses(
-    input_folder: Path,
-    pose_key: str,
-    errors : np.ndarray = None,
-    scale: Optional[float] = None,
-    labels: bool = False
-) -> None:
-
-
-    matplotlib.use("TkAgg")
-
-    def plot_poses(
+    
+def plot_poses(
         poses: Sequence[np.ndarray], scale: Optional[float] = None, labels: bool = False
     ) -> None:
         poses_arr = np.stack(poses)
         tvecs = poses_arr[:, :3, 3]
+
+        t_vectors = poses[:, :3, 3]
+        z_vectors = poses[:, :3, 2]
 
         if scale is None:
             dists = pairwise_distances(tvecs, metric="euclidean")
@@ -352,11 +236,29 @@ def show_poses(
         if labels:
             for i, (x, y, z) in enumerate(tvecs):
                 ax.text(x, y, z, str(i))
+        
+        c = nearest_intersection(t_vectors,z_vectors)
+        ax.scatter(*c, c='green')
 
         ax.set_xlim([-1, 1])
         ax.set_ylim([-1, 1])
         ax.set_zlim([-1, 1])
+
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
         plt.show()
+
+
+def show_poses(
+    input_folder: Path,
+    pose_key: str,
+    errors : np.ndarray = None,
+    scale: Optional[float] = None,
+    labels: bool = False
+) -> None:
+
+    matplotlib.use("TkAgg")
 
     uf = UnderfolderReader(input_folder)
     poses = []
@@ -382,31 +284,6 @@ def show_poses(
     print(f'Ty -> min: {np.min(ys)} max: {np.max(ys)}')
     print(f'Tz -> min: {np.min(zs)} max: {np.max(zs)}')
 
-    #poses[:,2,3] = 0.44
-
-
-    # tmp = [p[1,3] for p in poses]
-    # print(np.argmin(tmp))
-    # print(tmp)
-
-    # print(poses[27])
-    # # print(len(poses))
-    # poses = np.delete(poses,25,axis=0)
-    # tmp = [p[1,3] for p in poses]
-    # print(np.argmin(tmp))
-    # print(tmp)
-    # # print(poses.shape)
-
-    # d = {}
-    # for id,p1 in enumerate(poses) : 
-    #     s = 0
-    #     for p2 in poses : 
-    #         s += int(np.allclose(p1,p2,atol=1.e-3))
-    #     d[id]=s
-
-    # for k,v in d.items() : 
-    #     if v !=4 : print(k)
-
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
@@ -418,14 +295,19 @@ def show_poses(
 
     p = ax.scatter(poses[:,0,3],poses[:,1,3],poses[:,2,3],c=colors,cmap=cmhot)
 
-    plt.xlabel('x')
-    plt.ylabel('y')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
 
     if errors is not None : 
         cbar = fig.colorbar(p)
         cbar.set_label('error')
 
     plt.show()
-    #plot_poses(poses, scale=scale, labels=labels)
+    plot_poses(poses, scale, labels=labels)
 
-show_poses('/home/eyecan/dev/relight/data/datasets/train/ficus_impreciseDome5/uf','light')
+show_poses('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/prova_marco/uf2','pose')
+    
+
+
+
