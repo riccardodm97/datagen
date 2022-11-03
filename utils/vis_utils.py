@@ -306,10 +306,10 @@ def show_poses(
     plt.show()
     plot_poses(poses, scale, labels=labels)
 
-#show_poses('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/test/prova_marco/light360/uf','light')
+#show_poses('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/helicopter/uf','pose')
     
 
-def show_test_light(input_folder : Path, zenit, num_poses):
+def show_test_light(input_folder : Path, zenit, num_poses, rotate_light : float = None):
 
     uf = UnderfolderReader(input_folder)
     camera_poses = []
@@ -317,19 +317,20 @@ def show_test_light(input_folder : Path, zenit, num_poses):
     for sample in uf:
         c_pose : np.ndarray = sample['pose']
         l_pose : np.ndarray = sample['light']
+
         if c_pose[3, 3]== 1 and l_pose[3,3]== 1:
             camera_poses.append(c_pose)
             light_poses.append(l_pose)
 
-    camera_poses = np.array(camera_poses)
+    camera_poses = np.array(camera_poses) 
     light_poses = np.array(light_poses)
 
 
     light_t_vectors = light_poses[:,:3,3]
-    light_z_vectors = light_poses[:,:3,2]
+    light_z_vectors = light_poses[:,:3,2]  
 
     light_dome_center = nearest_intersection(light_t_vectors,light_z_vectors)
-    light_dome_center = light_dome_center.squeeze(1)
+    light_dome_center = light_dome_center.squeeze(1) 
     light_dome_radius =  np.linalg.norm(light_t_vectors[0] - light_dome_center)
 
 
@@ -339,12 +340,24 @@ def show_test_light(input_folder : Path, zenit, num_poses):
     camera_dome_center = nearest_intersection(camera_t_vectors,camera_z_vectors)
     camera_dome_center = camera_dome_center.squeeze(1)
 
+
     # determine light circle poses 
     theta = np.radians(zenit)
     circle_center = light_dome_center.copy()
-    circle_center[2]+= light_dome_radius * np.cos(theta)            
-    circle_radius = light_dome_radius * np.sin(theta)
+    circle_center[2] += light_dome_radius * np.cos(theta)    
+    circle_radius = light_dome_radius * np.sin(theta) 
     xyz_l = n_points_on_circle(circle_radius,circle_center,num_poses)
+
+    if rotate_light : 
+        R = np.zeros((3,3))
+        R[0,0] = 1
+        theta = np.radians(rotate_light)
+        c, s = np.cos(theta), np.sin(theta)
+        R[1:,1:] = [[c, -s], [s, c]]
+
+        circle_center = circle_center @ R
+        xyz_l = xyz_l @ R
+
 
     test_light_poses = []
 
@@ -366,7 +379,7 @@ def show_test_light(input_folder : Path, zenit, num_poses):
 
     ax.scatter(test_light_poses[:,0,3],test_light_poses[:,1,3],test_light_poses[:,2,3],c='red')
     ax.scatter(*circle_center, c='black')
-    ax.scatter(light_poses[:,0,3],light_poses[:,1,3],light_poses[:,2,3],c ='green')
+    ax.scatter(light_poses[:,0,3],light_poses[:,1,3],light_poses[:,2,3], c ='green')
 
     # camera plot 
     camera_x_line_endpoints = [camera_dome_center[0], camera_t_vectors[0][0]]
@@ -374,7 +387,7 @@ def show_test_light(input_folder : Path, zenit, num_poses):
     camera_z_line_endpoints = [camera_dome_center[2], camera_t_vectors[0][2]]
     ax.plot(camera_x_line_endpoints, camera_y_line_endpoints, camera_z_line_endpoints, 'bo', linestyle="--")
 
-    ax.scatter(camera_poses[:,0,3],camera_poses[:,1,3],camera_poses[:,2,3],c ='orange')
+    ax.scatter(camera_poses[:,0,3],camera_poses[:,1,3],camera_poses[:,2,3], c ='orange')
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')
@@ -387,7 +400,7 @@ def show_test_light(input_folder : Path, zenit, num_poses):
     plot_poses(np.array(test_light_poses), scale=0.3)
     plt.show()
 
-#show_test_light('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/prova_marco/uf3',38, 100)
+show_test_light('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/trucks/uf',35, 100, 16.5)
 
 def show_test_camera(input_folder : Path, zenit, num_poses):
 
@@ -457,8 +470,6 @@ def show_test_camera(input_folder : Path, zenit, num_poses):
     light_z_line_endpoints = [light_dome_center[2], light_t_vectors[0][2]]
     ax.plot(light_x_line_endpoints, light_y_line_endpoints, light_z_line_endpoints, 'bo', linestyle="--")
 
-    # ax.scatter(test_light_poses[:,0,3],test_light_poses[:,1,3],test_light_poses[:,2,3],c='red')
-    # ax.scatter(*circle_center, c='black')
     ax.scatter(light_poses[:,0,3],light_poses[:,1,3],light_poses[:,2,3],c ='green')
 
     # camera plot 
@@ -483,4 +494,4 @@ def show_test_camera(input_folder : Path, zenit, num_poses):
     plt.show()
 
 
-show_test_camera('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/prova_marco/uf3',68, 100)
+#show_test_camera('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/prova_marco/uf3',68, 100)

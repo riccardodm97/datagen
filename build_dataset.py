@@ -61,14 +61,16 @@ def generate_dataset_train(
 
         intrinsics = sample[CAMERA_KEY]["intrinsics"]
 
-        intrinsics["camera_matrix"][0][0] /= 2
-        intrinsics["camera_matrix"][1][1] /= 2
-        intrinsics["camera_matrix"][0][2] /= 2
-        intrinsics["camera_matrix"][1][2] /= 2
-        intrinsics["image_size"][0] = int(intrinsics["image_size"][0]/2)
-        intrinsics["image_size"][1] = int(intrinsics["image_size"][1]/2)
+        sample[CAMERA_KEY]["intrinsics"]["camera_matrix"][0][0] /= 2
+        sample[CAMERA_KEY]["intrinsics"]["camera_matrix"][1][1] /= 2
+        sample[CAMERA_KEY]["intrinsics"]["camera_matrix"][0][2] /= 2
+        sample[CAMERA_KEY]["intrinsics"]["camera_matrix"][1][2] /= 2
+        sample[CAMERA_KEY]["intrinsics"]["image_size"][0] = int(intrinsics["image_size"][0]/2)
+        sample[CAMERA_KEY]["intrinsics"]["image_size"][1] = int(intrinsics["image_size"][1]/2)
         sample[IMAGE_KEY] = cv2.resize(sample[IMAGE_KEY], dsize=[int(i) for i in intrinsics["image_size"]], interpolation=cv2.INTER_AREA)
         new_sequence.append(sample)
+
+
 
         if debug:
             image = cv2.flip(sample[IMAGE_KEY], flipCode=0)
@@ -76,8 +78,9 @@ def generate_dataset_train(
             cv2.imshow("img", cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
             cv2.waitKey(0)
 
+
     template = light_sets_uf[0].get_reader_template()
-    template.root_files_keys = [k for k in template.root_files_keys if k != "lights"]
+    template.root_files_keys = [k for k in template.root_files_keys if k != "light"]
 
     reset = OperationResetIndices()
 
