@@ -71,6 +71,8 @@ def camera_light_on_two_domes_uniformly():
     radius_l = radius_c + 0.2
     poi = np.array([0.1,0.2,0.1])
 
+    #light = np.array([0.5,-0.73,0.88])
+
 
     xyz_c = points_on_dome(radius_c,200)
     xyz_c = xyz_c + poi                       #DEBUG
@@ -84,8 +86,9 @@ def camera_light_on_two_domes_uniformly():
 
     ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='blue',marker='s')
     ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='orange',marker='$*$',s=50)
+    #ax.scatter(light[0],light[1],light[2],c='orange',marker='$*$',s=70)
 
-    ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+
     #ax.scatter(*poi, c='green')
 
     ax.set_xlabel('x')
@@ -100,18 +103,18 @@ def camera_light_on_two_domes_uniformly():
     plt.show()
 
 
-camera_light_on_two_domes_uniformly()
+#camera_light_on_two_domes_uniformly()
 
 
 def fixed_camera_on_dome_light_circle():
 
 
     radius_c = 0.65
-    radius_l = radius_c + 0.4
+    radius_l = radius_c + 0.2
     poi = np.array([0.1,0.2,0.1])
 
 
-    xyz_c = points_on_dome(radius_c,200)
+    xyz_c = points_on_dome(radius_c,2j00)
     xyz_c = xyz_c + poi                  
 
     xyz_d = points_on_dome(radius_l,400)
@@ -119,11 +122,12 @@ def fixed_camera_on_dome_light_circle():
 
     idx = np.random.randint(0, xyz_c.shape[0])
     camera_pos = xyz_c[idx,:]
+    light_pos = xyz_d[idx,:]
 
-    theta = np.radians(60)
+    theta = np.radians(80)
     circle_center = poi.copy()
-    circle_center[2]+= (radius_c + 0.4) * np.cos(theta) 
-    circle_radius = ((radius_c + 0.4) * np.sin(theta)) 
+    circle_center[2]+= (radius_c) * np.cos(theta) 
+    circle_radius = ((radius_c) * np.sin(theta)) 
     xyz_l = points_circle(circle_radius,circle_center,100)
 
     theta2 = np.radians(60)
@@ -136,18 +140,30 @@ def fixed_camera_on_dome_light_circle():
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='black')
-    ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='blue')
-    ax.scatter(xyz_d[:,0],xyz_d[:,1],xyz_d[:,2],c='purple')
-    ax.scatter(xyz_l2[:,0],xyz_l2[:,1],xyz_l2[:,2],c='yellow')
-    ax.scatter(*poi, c='green')
-    ax.scatter(camera_pos[0],camera_pos[1],camera_pos[2],c='red')
-    ax.plot([camera_pos[0],poi[0]], [camera_pos[1],poi[1]],[camera_pos[2],poi[2]], linestyle="--")
+    #ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2])
+    ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='blue',marker='s')
+    #ax.scatter(xyz_d[:,0],xyz_d[:,1],xyz_d[:,2],c='purple')
+    #ax.scatter(xyz_l2[:,0],xyz_l2[:,1],xyz_l2[:,2],c='yellow')
+    #ax.scatter(*poi, c='green')
+    #ax.scatter(camera_pos[0],camera_pos[1],camera_pos[2])
+    ax.scatter(light_pos[0],light_pos[1],light_pos[2],c='orange',marker='$*$',s=50)
+    #ax.plot([camera_pos[0],poi[0]], [camera_pos[1],poi[1]],[camera_pos[2],poi[2]], linestyle="--")
 
-    plt.xlabel('x')
-    plt.ylabel('y')
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([0, 1])
+
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
 
     plt.show()
+
+fixed_camera_on_dome_light_circle()
 
 def light_from_above_camera_circle():
 
