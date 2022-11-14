@@ -71,7 +71,6 @@ def generate_dataset_train(
         new_sequence.append(sample)
 
 
-
         if debug:
             image = cv2.flip(sample[IMAGE_KEY], flipCode=0)
 
@@ -99,6 +98,7 @@ def generate_dataset_test_light360(
     input_folder: Path = t.Option(..., help="Specify the input underfolder path"),
     output_folder : Path = t.Option(..., help="Specify the output underfolder path"),
     zenit : int = t.Option(..., help="zenit of the cirle of lights on the dome"),
+    rotate_lights : float = t.Option(None,help='angle of rotatation of the reference frame of the test lights'),
     num_poses : int = t.Option(..., help="num poses to generate"),
     camera_id : int = t.Option(None, help="camera point of view from train poses")
 ): 
@@ -128,6 +128,15 @@ def generate_dataset_test_light360(
     circle_center[2]+= light_dome_radius * np.cos(theta)            
     circle_radius = light_dome_radius * np.sin(theta)
     xyz_l = n_points_on_circle(circle_radius,circle_center,num_poses)
+
+    if rotate_lights is not None: 
+        R = np.zeros((3,3))
+        R[0,0] = 1
+        theta = np.radians(rotate_lights)
+        c, s = np.cos(theta), np.sin(theta)
+        R[1:,1:] = [[c, -s], [s, c]]
+
+        xyz_l = xyz_l @ R
 
     test_light_poses = []
 

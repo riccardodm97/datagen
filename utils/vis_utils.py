@@ -68,7 +68,7 @@ def camera_light_on_two_domes_uniformly():
 
 
     radius_c = 0.65
-    radius_l = radius_c + 0.4
+    radius_l = radius_c + 0.2
     poi = np.array([0.1,0.2,0.1])
 
 
@@ -82,17 +82,25 @@ def camera_light_on_two_domes_uniformly():
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='blue')
-    ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='red')
-    ax.scatter(*poi, c='green')
+    ax.scatter(xyz_c[:,0],xyz_c[:,1],xyz_c[:,2],c='blue',marker='s')
+    ax.scatter(xyz_l[:,0],xyz_l[:,1],xyz_l[:,2],c='orange',marker='$*$',s=50)
 
-    plt.xlabel('x')
-    plt.ylabel('y')
+    ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    #ax.scatter(*poi, c='green')
+
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
+
 
     plt.show()
 
 
-# camera_light_on_two_domes_uniformly()
+camera_light_on_two_domes_uniformly()
 
 
 def fixed_camera_on_dome_light_circle():
@@ -306,7 +314,7 @@ def show_poses(
     plt.show()
     plot_poses(poses, scale, labels=labels)
 
-#show_poses('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/helicopter/uf','pose')
+#show_poses('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/test/TM/kittens_cloth/light360_2/uf','light')
     
 
 def show_test_light(input_folder : Path, zenit, num_poses, rotate_light : float = None):
@@ -397,10 +405,10 @@ def show_test_light(input_folder : Path, zenit, num_poses, rotate_light : float 
     ax.set_ylim([-0.3, 0.3])
     ax.set_zlim([0.1, 0.6])
     
-    plot_poses(np.array(test_light_poses), scale=0.3)
+    #plot_poses(np.array(test_light_poses), scale=0.3)
     plt.show()
 
-show_test_light('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/trucks/uf',35, 100, 16.5)
+# show_test_light('/home/eyecan/dev/nerf_relight/real_relight/data/datasets/train/TM/kittens_cloth/uf',35, 100, None)
 
 def show_test_camera(input_folder : Path, zenit, num_poses):
 
